@@ -48,6 +48,20 @@ namespace DemoImportExport
             {
                 app.UseSwagger();
                 app.UseSwaggerUI();
+                app.UseHsts();
+            }
+
+            // use scope ensure connect to db 
+            using (var scope = app.Services.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                if (dbContext.Database.EnsureCreated())
+                {
+                    dbContext.Database.Migrate();
+                } else
+                {
+                    throw new Exception("Database not created");
+                }
             }
 
             app.UseHttpsRedirection();

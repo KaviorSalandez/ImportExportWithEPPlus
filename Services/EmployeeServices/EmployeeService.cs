@@ -666,18 +666,19 @@ namespace DemoImportExport.Services.EmployeeServices
             }
         }
 
-        public async Task<byte[]> ExportExcel2(bool isFileMau, string? keyRedis)
+        public Task<byte[]> ExportExcel2(bool isFileMau, string? keyRedis)
         {
-            IEnumerable<EmployeeExcelDto> data = new List<EmployeeExcelDto>();
-            //kiểm tra xem một ICollection
-            if (keyRedis != null)
-            {
-                var dataImport = _cacheService.GetData<List<EmployeeImportDto>>(keyRedis);
+            //IEnumerable<EmployeeExcelDto> data = new List<EmployeeExcelDto>();
+            ////kiểm tra xem một ICollection
+            //if (keyRedis != null)
+            //{
+            //    var dataImport = _cacheService.GetData<List<EmployeeImportDto>>(keyRedis);
 
-                data = dataImport.Select(e => _mapper.Map<EmployeeExcelDto>(e)).ToList();
-            }
+            //    data = dataImport.Select(e => _mapper.Map<EmployeeExcelDto>(e)).ToList();
+            //}
 
-            return await GenerateExcelFile(data, keyRedis);
+            //return await GenerateExcelFile(data, keyRedis);
+            throw new Exception();
         }
     }
 }

@@ -98,21 +98,21 @@ namespace DemoImportExport.Controllers
             return File(excelData, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
         }
 
-        [HttpGet("ExportExcelFail/{id}")]
-        public async Task<IActionResult> ExportExcelFail(string id)
-        {
-            byte[] excelData = await _quizQuestionService.ExportExcel(1, id);
-            string fileName = $"Quiz-Fail-{DateTime.Now.ToString("dd-MM-yy HH:mm:ss")}.xlsx";
-            return File(excelData, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
-        }
+        //[HttpGet("ExportExcelFail/{id}")]
+        //public async Task<IActionResult> ExportExcelFail(string id)
+        //{
+        //    byte[] excelData = await _quizQuestionService.ExportExcel(1, id);
+        //    string fileName = $"Quiz-Fail-{DateTime.Now.ToString("dd-MM-yy HH:mm:ss")}.xlsx";
+        //    return File(excelData, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+        //}
 
-        [HttpGet("ExportExcelResult/{id}")]
-        public async Task<IActionResult> ExportExcelResult(string id)
-        {
-            byte[] excelData = await _quizQuestionService.ExportExcel(1, id);
-            string fileName = $"Quiz-Result-{DateTime.Now.ToString("dd-MM-yy HH:mm:ss")}.xlsx";
-            return File(excelData, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
-        }
+        //[HttpGet("ExportExcelResult/{id}")]
+        //public async Task<IActionResult> ExportExcelResult(string id)
+        //{
+        //    byte[] excelData = await _quizQuestionService.ExportExcel(1, id);
+        //    string fileName = $"Quiz-Result-{DateTime.Now.ToString("dd-MM-yy HH:mm:ss")}.xlsx";
+        //    return File(excelData, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+        //}
 
     }
 }
