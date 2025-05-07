@@ -4,15 +4,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DemoImportExport.Repositories.PositionRepositories
 {
-    public class PositionRepository : IPositionRepository
+    public class PositionRepository : GenericRepository<Position>, IPositionRepository
     {
-        private readonly AppDbContext _context;
-
-        public PositionRepository(AppDbContext context)
+        public PositionRepository(AppDbContext context): base(context)
         {
-            _context = context;
         }
-
         public async Task<IEnumerable<Position>> GetAllAsync()
         {
             return await _context.Positions.ToListAsync();
@@ -21,28 +17,6 @@ namespace DemoImportExport.Repositories.PositionRepositories
         public async Task<Position?> GetByIdAsync(int id)
         {
             return await _context.Positions.FindAsync(id);
-        }
-
-        public async Task AddAsync(Position position)
-        {
-            await _context.Positions.AddAsync(position);
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task UpdateAsync(Position position)
-        {
-            _context.Positions.Update(position);
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task DeleteAsync(int id)
-        {
-            var position = await _context.Positions.FindAsync(id);
-            if (position != null)
-            {
-                _context.Positions.Remove(position);
-                await _context.SaveChangesAsync();
-            }
         }
         public async Task<Position> CheckPositionName(string positionName)
         {

@@ -1,18 +1,14 @@
-﻿using System.Linq;
-using DemoImportExport.Models;
+﻿using DemoImportExport.Models;
 using DemoImportExport.Persistents;
-using EntityFramework.BulkExtensions;
 using Microsoft.EntityFrameworkCore;
+using EFCore.BulkExtensions;
 
 namespace DemoImportExport.Repositories.EmployeeRepositories
 {
-    public class EmployeeRepository : IEmployeeRepository
+    public class EmployeeRepository : GenericRepository<Employee>, IEmployeeRepository
     {
-        private readonly AppDbContext _context;
-
-        public EmployeeRepository(AppDbContext context)
+        public EmployeeRepository(AppDbContext context) : base(context)
         {
-            _context = context;
         }
 
         public async Task<IEnumerable<Employee>> GetAllAsync()
@@ -23,28 +19,6 @@ namespace DemoImportExport.Repositories.EmployeeRepositories
         public async Task<Employee?> GetByIdAsync(int id)
         {
             return await _context.Employees.FindAsync(id);
-        }
-
-        public async Task AddAsync(Employee employee)
-        {
-            await _context.Employees.AddAsync(employee);
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task UpdateAsync(Employee employee)
-        {
-            _context.Employees.Update(employee);
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task DeleteAsync(int id)
-        {
-            var employee = await _context.Employees.FindAsync(id);
-            if (employee != null)
-            {
-                _context.Employees.Remove(employee);
-                await _context.SaveChangesAsync();
-            }
         }
 
         public async Task<Employee> CheckEmployeeCode(string employeeCode)
@@ -67,7 +41,6 @@ namespace DemoImportExport.Repositories.EmployeeRepositories
             _context.BulkInsert(employees);
             return employees.Count();
         }
-
         public async Task<IEnumerable<Employee>> FindAllFilter(int pageSize = 10, int pageNumber = 1, string search = "", string? email = "")
         {
             var query = _context.Employees.AsQueryable();
@@ -89,7 +62,6 @@ namespace DemoImportExport.Repositories.EmployeeRepositories
 
             return await query.ToListAsync();
         }
-
         public async Task<IEnumerable<Employee>> FindManyRecord(List<int> Ids)
         {
 

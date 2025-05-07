@@ -1,19 +1,11 @@
-﻿using DemoImportExport.Models;
-using DemoImportExport.Repositories.DepartmentRepositories;
-using DemoImportExport.Repositories.EmployeeRepositories;
-using Microsoft.EntityFrameworkCore;
+﻿using DemoImportExport.Uow;
 
 namespace DemoImportExport.Services.DepartmentServices
 {
-    public class DepartmentService : IDepartmentService
+    public class DepartmentService : BaseService, IDepartmentService
     {
-        private readonly IDepartmentRepository _departmentRepository;
-
-        public DepartmentService(IDepartmentRepository departmentRepository)
+        public DepartmentService(IUnitOfWork unitOfWork) : base(unitOfWork)
         {
-            _departmentRepository = departmentRepository;
         }
-
-       
     }
 }

@@ -1,5 +1,4 @@
-﻿using ClosedXML.Excel;
-using DemoImportExport.DTOs.Employees;
+﻿using DemoImportExport.DTOs.Employees;
 using DemoImportExport.Enums;
 using DemoImportExport.Models;
 using DemoImportExport.Repositories.EmployeeRepositories;
@@ -17,60 +16,57 @@ using Newtonsoft.Json.Linq;
 using OfficeOpenXml;
 using AutoMapper;
 using DemoImportExport.DTOs.Employee;
-using DocumentFormat.OpenXml.Bibliography;
 using OfficeOpenXml.Style;
-using DocumentFormat.OpenXml.Office2010.Excel;
-using DocumentFormat.OpenXml.Spreadsheet;
 using DemoImportExport.Extensions;
+using DemoImportExport.Uow;
 
 namespace DemoImportExport.Services.EmployeeServices
 {
-    public class EmployeeService : IEmployeeService
+    public class EmployeeService : BaseService, IEmployeeService
     {
-        private readonly IEmployeeRepository _employeeRepo;
-        private readonly IDepartmentRepository _departmentRepository;
-        private readonly IPositionRepository _positionRepository;
         private readonly ICacheService _cacheService;
         private readonly IMapper _mapper;
+        private readonly ILogger<EmployeeService> _logger;
 
-
-        public EmployeeService(IEmployeeRepository employeeRepo, IDepartmentRepository departmentRepository, IPositionRepository positionRepository, ICacheService cacheService, IMapper mapper)
+        public EmployeeService(IUnitOfWork unitOfWork,ICacheService cacheService, IMapper mapper, ILogger<EmployeeService> logger) : base(unitOfWork)
         {
-            _employeeRepo = employeeRepo;
-            _departmentRepository = departmentRepository;
-            _positionRepository = positionRepository;
             _cacheService = cacheService;
             _mapper = mapper;
+            _logger = logger;
         }
 
         public async Task<IEnumerable<Employee>> GetAllAsync()
         {
-            return await _employeeRepo.GetAllAsync();
+            return await UnitOfWork.EmployeeRepository.GetAllAsync();
         }
 
         public async Task<Employee?> GetByIdAsync(int id)
         {
-            return await _employeeRepo.GetByIdAsync(id);
+            return await UnitOfWork.EmployeeRepository.GetByIdAsync(id);
         }
 
         public async Task AddAsync(Employee employee)
         {
-            await _employeeRepo.AddAsync(employee);
+            await UnitOfWork.EmployeeRepository.AddAsync(employee);
+            await UnitOfWork.SaveChangeAsync();
         }
 
         public async Task UpdateAsync(Employee employee)
         {
-            await _employeeRepo.UpdateAsync(employee);
+            await UnitOfWork.EmployeeRepository.UpdateAsync(employee, employee.EmployeeId);
+            await UnitOfWork.SaveChangeAsync();
         }
 
         public async Task DeleteAsync(int id)
         {
-            await _employeeRepo.DeleteAsync(id);
+            var employee = await UnitOfWork.EmployeeRepository.GetByIdAsync(id);
+            await UnitOfWork.EmployeeRepository.DeleteAsync(employee);
+            await UnitOfWork.SaveChangeAsync();
         }
 
         public async Task<EmployeeCountDto> FindAllFilter(int pageSize = 10, int pageNumber = 1, string search = "", string? email = "")
         {
-            IEnumerable<Employee> employees = await _employeeRepo.FindAllFilter(pageSize, pageNumber, search, email);
+            IEnumerable<Employee> employees = await UnitOfWork.EmployeeRepository.FindAllFilter(pageSize, pageNumber, search, email);
             EmployeeCountDto result = new EmployeeCountDto();
 
             if (employees != null && employees.Any())
@@ -97,9 +93,9 @@ namespace DemoImportExport.Services.EmployeeServices
         {
             IEnumerable<EmployeeExcelDto> data = new List<EmployeeExcelDto>();
             // check Data  = 1 -> kết xuất file rỗng để import
-            if(isFileMau)
+            if (isFileMau)
             {
-                return GenerateExcelFile(data,null);
+                return GenerateExcelFile(data, null);
             }
             else
             {
@@ -107,17 +103,17 @@ namespace DemoImportExport.Services.EmployeeServices
                 if (Ids != null && Ids.Count > 0)
                 {
                     // chỉ kết xuất các bản ghi được tick
-                    var employees = await _employeeRepo.FindManyRecord(Ids);
+                    var employees = await UnitOfWork.EmployeeRepository.FindManyRecord(Ids);
                     data = _mapper.Map<IEnumerable<EmployeeExcelDto>>(employees);
                 }
                 else
                 {
                     // kết xuất tất các các bản ghi trong DB
-                    var employees = await _employeeRepo.GetAllAsync();
+                    var employees = await UnitOfWork.EmployeeRepository.GetAllAsync();
                     data = _mapper.Map<IEnumerable<EmployeeExcelDto>>(employees);
 
                 }
-                return GenerateExcelFile(data,null);
+                return GenerateExcelFile(data, null);
             }
         }
         // style for column 
@@ -180,7 +176,7 @@ namespace DemoImportExport.Services.EmployeeServices
 
 
         private byte[] GenerateExcelFile(IEnumerable<EmployeeExcelDto> data, string keyRedis)
-        {   
+        {
             EGender[] typeGenders = (EGender[])Enum.GetValues(typeof(EGender));
 
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial; // Bắt buộc nếu dùng EPPlus 5+
@@ -261,7 +257,7 @@ namespace DemoImportExport.Services.EmployeeServices
             for (int i = 0; i < Ids.Count; i++)
             {
                 var Id = Ids[i];
-                var find = await _employeeRepo.GetByIdAsync(Id);
+                var find = await UnitOfWork.EmployeeRepository.GetByIdAsync(Id);
                 if (find == null)
                 {
                     throw new Exception("Không tìm thấy đối tượng");
@@ -288,8 +284,8 @@ namespace DemoImportExport.Services.EmployeeServices
 
             var employeeImportSuccess = new List<Employee>();
 
-            var positions = await _positionRepository.GetAllAsync();
-            var departments = await _departmentRepository.GetAllAsync();
+            var positions = await UnitOfWork.PositionRepository.GetAllAsync();
+            var departments = await UnitOfWork.DepartmentRepository.GetAllAsync();
 
             using (var stream = new MemoryStream())
             {
@@ -324,9 +320,9 @@ namespace DemoImportExport.Services.EmployeeServices
 
                                 DOB = dob != "" && dob != null ? ProcessDate(dob) : null,
 
-                                PositionId = checkPositionName != null ? (int) checkPositionName.GetType().GetProperty("PositionId")?.GetValue(checkPositionName, null): 0,
-                                DepartmentId = checkDepartmentName != null ? (int)checkDepartmentName.GetType().GetProperty("DepartmentId")?.GetValue(checkDepartmentName, null):0,
-                                
+                                PositionId = checkPositionName != null ? (int)checkPositionName.GetType().GetProperty("PositionId")?.GetValue(checkPositionName, null) : 0,
+                                DepartmentId = checkDepartmentName != null ? (int)checkDepartmentName.GetType().GetProperty("DepartmentId")?.GetValue(checkDepartmentName, null) : 0,
+
                                 BankAccount = workSheet?.Cells[row, 8]?.Value?.ToString()?.Trim(),
                                 BankName = workSheet?.Cells[row, 9]?.Value?.ToString()?.Trim(),
                             };
@@ -344,7 +340,7 @@ namespace DemoImportExport.Services.EmployeeServices
 
                             var employee = _mapper.Map<Employee>(employeeImportDto);
 
-                            var checkEmployeeCode = await _employeeRepo.CheckEmployeeCode(employeeImportDto.EmployeeCode);
+                            var checkEmployeeCode = await UnitOfWork.EmployeeRepository.CheckEmployeeCode(employeeImportDto.EmployeeCode);
                             if (checkEmployeeCode != null)
                             {
                                 AddImportError(employeeImportDto, "Mã Nhân Viên đã được tạo");
@@ -389,7 +385,7 @@ namespace DemoImportExport.Services.EmployeeServices
             var jArray = JsonConvert.DeserializeObject<JArray>(dataImport);
             var employees = jArray?.ToObject<List<Employee>>();
 
-            var create = _employeeRepo.InsertMany(employees);
+            var create = UnitOfWork.EmployeeRepository.InsertMany(employees);
             return create;
         }
 
@@ -542,7 +538,7 @@ namespace DemoImportExport.Services.EmployeeServices
         }
 
 
-       
+
 
         /// <summary>
         /// Chuyển đổi dữ liệu sang các bảng của excel 
@@ -634,17 +630,17 @@ namespace DemoImportExport.Services.EmployeeServices
 
         public async Task CheckBeforeInsert(EmployeeCreateDto entity)
         {
-            var department = await _departmentRepository.GetByIdAsync(entity.DepartmentId);
+            var department = await UnitOfWork.DepartmentRepository.GetByIdAsync(entity.DepartmentId);
             if (department == null)
             {
                 throw new Exception("Không tìm thấy đơn vị");
             }
-            var position = await _positionRepository.GetByIdAsync(entity.PositionId);
+            var position = await UnitOfWork.PositionRepository.GetByIdAsync(entity.PositionId);
             if (position == null)
             {
                 throw new Exception("Không tìm thấy vị trí");
             }
-            var employeeCode = await _employeeRepo.CheckEmployeeCode(entity.EmployeeCode.ToLower());
+            var employeeCode = await UnitOfWork.EmployeeRepository.CheckEmployeeCode(entity.EmployeeCode.ToLower());
             if (employeeCode != null)
             {
                 throw new Exception("Mã Nhân Viên đã được tạo");
@@ -652,14 +648,14 @@ namespace DemoImportExport.Services.EmployeeServices
         }
 
 
-        public  async Task CheckBeforeUpdate(EmployeeUpdateDto entity)
+        public async Task CheckBeforeUpdate(EmployeeUpdateDto entity)
         {
-            var department = await _departmentRepository.GetByIdAsync(entity.DepartmentId);
+            var department = await UnitOfWork.DepartmentRepository.GetByIdAsync(entity.DepartmentId);
             if (department == null)
             {
                 throw new Exception("Không tìm thấy đơn vị");
             }
-            var position = await _positionRepository.GetByIdAsync(entity.PositionId);
+            var position = await UnitOfWork.PositionRepository.GetByIdAsync(entity.PositionId);
             if (position == null)
             {
                 throw new Exception("Không tìm thấy vị trí");

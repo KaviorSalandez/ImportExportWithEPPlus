@@ -4,15 +4,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DemoImportExport.Repositories.DepartmentRepositories
 {
-    public class DepartmentRepository : IDepartmentRepository
+    public class DepartmentRepository : GenericRepository<Department>, IDepartmentRepository
     {
-        private readonly AppDbContext _context;
-
-        public DepartmentRepository(AppDbContext context)
+        public DepartmentRepository(AppDbContext context) : base(context)
         {
-            _context = context;
         }
-
         public async Task<IEnumerable<Department>> GetAllAsync()
         {
             return await _context.Departments.ToListAsync();
@@ -22,29 +18,7 @@ namespace DemoImportExport.Repositories.DepartmentRepositories
         {
             return await _context.Departments.FindAsync(id);
         }
-
-        public async Task AddAsync(Department department)
-        {
-            await _context.Departments.AddAsync(department);
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task UpdateAsync(Department department)
-        {
-            _context.Departments.Update(department);
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task DeleteAsync(int id)
-        {
-            var department = await _context.Departments.FindAsync(id);
-            if (department != null)
-            {
-                _context.Departments.Remove(department);
-                await _context.SaveChangesAsync();
-            }
-        }
-
+        
         public async Task<Department> CheckDepartmentName(string departmentName)
         {
             var findName = await _context.Departments
