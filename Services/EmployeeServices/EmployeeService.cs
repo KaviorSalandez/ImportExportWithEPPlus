@@ -19,6 +19,8 @@ using DemoImportExport.DTOs.Employee;
 using OfficeOpenXml.Style;
 using DemoImportExport.Extensions;
 using DemoImportExport.Uow;
+using DemoImportExport.Helper;
+using OfficeOpenXml.DataValidation;
 
 namespace DemoImportExport.Services.EmployeeServices
 {
@@ -28,7 +30,7 @@ namespace DemoImportExport.Services.EmployeeServices
         private readonly IMapper _mapper;
         private readonly ILogger<EmployeeService> _logger;
 
-        public EmployeeService(IUnitOfWork unitOfWork,ICacheService cacheService, IMapper mapper, ILogger<EmployeeService> logger) : base(unitOfWork)
+        public EmployeeService(IUnitOfWork unitOfWork, ICacheService cacheService, IMapper mapper, ILogger<EmployeeService> logger) : base(unitOfWork)
         {
             _cacheService = cacheService;
             _mapper = mapper;
@@ -116,83 +118,14 @@ namespace DemoImportExport.Services.EmployeeServices
                 return GenerateExcelFile(data, null);
             }
         }
-        // style for column 
-        public void StyleColumn(string[] columnHeaders, ExcelWorksheet worksheet, int dataStartRow, int endRow, string? keyRedis)
-        {
-            int[] columnWidths = { 7, 20, 30, 15, 15, 30, 30, 20, 20 };
-
-            if (keyRedis != null)
-            {
-                int[] extendedColumnWidths = new int[columnWidths.Length + 1];
-                for (int i = 0; i < columnWidths.Length; i++)
-                {
-                    extendedColumnWidths[i] = columnWidths[i];
-                }
-
-                // Add the new column header
-                extendedColumnWidths[columnWidths.Length] = 50;
-                // Replace the old array with the new one
-                columnWidths = extendedColumnWidths;
-            }
-
-            // Add column headers and set column widths
-            for (int i = 0; i < columnHeaders.Length; i++)
-            {
-                worksheet.Cells[dataStartRow, i + 1].Value = columnHeaders[i];
-                worksheet.Cells[dataStartRow, i + 1].Style.WrapText = true;
-                worksheet.Column(i + 1).Width = columnWidths[i];
-                worksheet.Row(dataStartRow).Style.Font.Size = 12; // Set font size for headers row
-                worksheet.Row(dataStartRow).Style.Font.Bold = true;
-                // Apply border style to the entire column
-                using (var range = worksheet.Cells[dataStartRow, i + 1, endRow, i + 1])
-                {
-                    range.Style.Border.Top.Style = ExcelBorderStyle.Thin;
-                    range.Style.Border.Bottom.Style = ExcelBorderStyle.Thin;
-                    range.Style.Border.Left.Style = ExcelBorderStyle.Thin;
-                    range.Style.Border.Right.Style = ExcelBorderStyle.Thin;
-                }
-            }
-        }
-
-        // create combobox 
-        private void AddDataValidation(ExcelWorksheet worksheet, string[] columnHeaders, int startRow, int endRow,
-            IEnumerable<EGender> comboBoxValues)
-        {
-            int genderColumnIndex = Array.IndexOf(columnHeaders, "Giới tính");
-            if (genderColumnIndex == -1)
-            {
-                throw new ArgumentException("Column 'Giới tính' not found in columnHeaders.");
-            }
-
-            var validationRange = worksheet.Cells[startRow, genderColumnIndex + 1, endRow, genderColumnIndex + 1];
-
-            var validation = validationRange.DataValidation.AddListDataValidation();
-
-            foreach (var value in comboBoxValues)
-            {
-                validation.Formula.Values.Add(value.GetDisplayNameEnum());
-            }
-        }
-
-
         private byte[] GenerateExcelFile(IEnumerable<EmployeeExcelDto> data, string keyRedis)
         {
-            EGender[] typeGenders = (EGender[])Enum.GetValues(typeof(EGender));
-
-            ExcelPackage.LicenseContext = LicenseContext.NonCommercial; // Bắt buộc nếu dùng EPPlus 5+
-            using (var package = new ExcelPackage())
+            try
             {
-                var ws = package.Workbook.Worksheets.Add("Danh sách nhân viên");
-                // Merge and style title
-                ws.Cells["A1:I2"].Merge = true;
-                ws.Cells["A1"].Value = "DANH SÁCH NHÂN VIÊN";
-                ws.Cells["A1"].Style.Font.Size = 25;
-                ws.Cells["A1"].Style.Font.Bold = true;
-                ws.Cells["A1"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-                ws.Row(1).Height = 25;
+                var typeGenders = HelperFile.ToValidationDict<EGender>("Giới tính");
 
-                // style for column 
-                string[] columnHeaders = {
+                var columnHeaders = new[]
+                    {
                     "STT",
                     "Mã Nhân Viên",
                     "Tên Nhân Viên",
@@ -204,37 +137,21 @@ namespace DemoImportExport.Services.EmployeeServices
                     "Tên Ngân Hàng"
                 };
 
-                if (keyRedis != null)
-                {
-                    string[] extendedColumnHeaders = new string[columnHeaders.Length + 1];
-                    for (int i = 0; i < columnHeaders.Length; i++)
-                    {
-                        extendedColumnHeaders[i] = columnHeaders[i];
-                    }
+                var file = HelperFile.GenerateExcelFile<EmployeeExcelDto>(
+                    data,
+                    keyRedis,
+                    "Danh sách nhân viên",
+                    columnHeaders,
+                    typeGenders
+                );
 
-                    // Add the new column header
-                    extendedColumnHeaders[columnHeaders.Length] = "Tình trạng";
-                    // Replace the old array with the new one
-                    columnHeaders = extendedColumnHeaders;
-                }
-
-                int dataStartRow = 3;
-                int endRow = 1000;
-                StyleColumn(columnHeaders, ws, dataStartRow, endRow, keyRedis);
-
-
-                int startRow = dataStartRow + 1; // Assuming data starts from row (dataStartRow + 1)
-                AddDataValidation(ws, columnHeaders, startRow, endRow, typeGenders);
-
-                ToConvertDataTable<EmployeeExcelDto>(data, ws);
-
-                using (MemoryStream stream = new MemoryStream())
-                {
-                    package.SaveAs(stream);
-                    return stream.ToArray();
-                }
+                return file;
             }
-
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                throw;
+            }
         }
 
         /// <summary>

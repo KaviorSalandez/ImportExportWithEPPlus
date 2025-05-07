@@ -1,6 +1,8 @@
 
+using System.Net;
 using DemoImportExport.Caches;
 using DemoImportExport.Mapping;
+using DemoImportExport.Models.Response;
 using DemoImportExport.Persistents;
 using DemoImportExport.Repositories.DepartmentRepositories;
 using DemoImportExport.Repositories.EmployeeRepositories;
@@ -9,6 +11,7 @@ using DemoImportExport.Services.DepartmentServices;
 using DemoImportExport.Services.EmployeeServices;
 using DemoImportExport.Services.PositionServices;
 using DemoImportExport.Uow;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using NLog;
 using NLog.Web;
@@ -82,10 +85,46 @@ namespace DemoImportExport
                     }
                 }
 
-                app.UseHttpsRedirection();
+                app.UseExceptionHandler(appBuilder =>
+                {
+                    appBuilder.Run(async context =>
+                    {
+                        context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                        context.Response.ContentType = "application/json";
 
+                        var error = context.Features.Get<IExceptionHandlerFeature>();
+                        if (error != null)
+                        {
+                            var response = new ApiResponse<object>
+                            {
+                                Status = 500,
+                                Message = error.Error.Message
+                            };
+
+                            await context.Response.WriteAsJsonAsync(response);
+                        }
+                    });
+                });
+
+                app.UseHttpsRedirection();
+                app.UseStaticFiles();
+                app.UseRouting();
+               
                 app.UseAuthorization();
 
+                app.Use(async (context, next) =>
+                {
+                    await next();
+
+                    if (context.Response.StatusCode == (int)HttpStatusCode.NotFound && context.GetEndpoint() == null)
+                    {
+                        await context.Response.WriteAsJsonAsync(new ApiResponse<object>()
+                        {
+                            Status = (int)HttpStatusCode.NotFound,
+                            Message = "Not Found",
+                        });
+                    }
+                });
 
                 app.MapControllers();
 
