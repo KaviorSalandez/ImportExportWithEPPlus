@@ -1,26 +1,20 @@
 ﻿using DemoImportExport.DTOs.Employees;
 using DemoImportExport.Enums;
 using DemoImportExport.Models;
-using DemoImportExport.Repositories.EmployeeRepositories;
 using MISA.AMISDemo.Core.DTOs.Employees;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using static DemoImportExport.Enums.CDKEnum;
 using System.Data;
 using System.Reflection;
-using DemoImportExport.Repositories.DepartmentRepositories;
-using DemoImportExport.Repositories.PositionRepositories;
 using DemoImportExport.Caches;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using OfficeOpenXml;
 using AutoMapper;
 using DemoImportExport.DTOs.Employee;
-using OfficeOpenXml.Style;
-using DemoImportExport.Extensions;
 using DemoImportExport.Uow;
 using DemoImportExport.Helper;
-using OfficeOpenXml.DataValidation;
 
 namespace DemoImportExport.Services.EmployeeServices
 {
@@ -123,28 +117,12 @@ namespace DemoImportExport.Services.EmployeeServices
             try
             {
                 var typeGenders = HelperFile.ToValidationDict<EGender>("Giới tính");
-
-                var columnHeaders = new[]
-                    {
-                    "STT",
-                    "Mã Nhân Viên",
-                    "Tên Nhân Viên",
-                    "Giới tính",
-                    "Ngày Sinh",
-                    "Tên Vị trí",
-                    "Tên Đơn Vị",
-                    "Số Tài Khoản",
-                    "Tên Ngân Hàng"
-                };
-
                 var file = HelperFile.GenerateExcelFile<EmployeeExcelDto>(
                     data,
                     keyRedis,
                     "Danh sách nhân viên",
-                    columnHeaders,
                     typeGenders
                 );
-
                 return file;
             }
             catch (Exception ex)

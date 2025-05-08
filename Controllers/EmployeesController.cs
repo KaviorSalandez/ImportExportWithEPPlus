@@ -1,9 +1,15 @@
-﻿using DemoImportExport.Caches;
+﻿using System.IO;
+using DemoImportExport.Caches;
+using DemoImportExport.Consts;
+using DemoImportExport.DTOs.Employees;
+using DemoImportExport.Helper;
 using DemoImportExport.Models;
+using DemoImportExport.Models.Response;
 using DemoImportExport.Services.EmployeeServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using OfficeOpenXml;
 
 namespace DemoImportExport.Controllers
 {
@@ -96,6 +102,47 @@ namespace DemoImportExport.Controllers
             byte[] excelData = await _employeeService.ExportExcel(isFileMau, listID);
             string fileName = $"List_Employee_{DateTime.Now.ToString("dd/MM/yy")}.xlsx";
             return File(excelData, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+        }
+
+        [HttpPost(RoutesConst.ImportEmployeeAPI)]
+        public async Task<ActionResult<ApiResponse<object>>> ImportEmployee(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Status = 400,
+                    Message = "File không hợp lệ.",
+                    Data = null,
+                    Error = "No file uploaded"
+                });
+            }
+
+            try
+            {
+                using var stream = new MemoryStream();
+                await file.CopyToAsync(stream);
+                stream.Position = 0; // Reset the stream position to the beginning
+                // Read the Excel file and map it to EmployeeExcelDto
+                var listEmployee = HelperFile.ReadExcel<EmployeeExcelDto>(stream);
+                stream.Close();
+
+                return Ok(new ApiResponse<object>
+                {
+                    Status = 200,
+                    Message = "Import thành công",
+                    Data = listEmployee
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(400, new ApiResponse<object>
+                {
+                    Status = 400,
+                    Message = "Lỗi xử lý file",
+                    Error = ex.Message
+                });
+            }
         }
 
         //[HttpGet("ExportExcelFail/{id}")]

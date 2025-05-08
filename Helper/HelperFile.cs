@@ -5,11 +5,14 @@ using System.Data;
 using DemoImportExport.Extensions;
 using DemoImportExport.Enums;
 using OfficeOpenXml.DataValidation;
+using System.ComponentModel.DataAnnotations;
+using DocumentFormat.OpenXml.Presentation;
 
 namespace DemoImportExport.Helper
 {
     public class HelperFile
     {
+        #region gen file
         /// <summary>
         /// Tạo file excel
         /// </summary>
@@ -17,11 +20,12 @@ namespace DemoImportExport.Helper
         /// <param name="data">Data export</param>
         /// <param name="keyRedis">Key redis</param>
         /// <param name="sheetTitle">Title sheet</param>
-        /// <param name="columnHeaders">list column</param>
         /// <param name="validationData">Để kiểu Dictionary(Tên cột, list giá trị) cho phép bắt buộc nhập những cột giá trị trong mảng theo yêu cầu nghiệp vụ </param>
         /// <returns></returns>
-        public static byte[] GenerateExcelFile<TDto>(IEnumerable<TDto> data, string keyRedis, string sheetTitle, string[] columnHeaders, Dictionary<string, IEnumerable<string>> validationData = null)
+        public static byte[] GenerateExcelFile<TDto>(IEnumerable<TDto> data, string keyRedis, string sheetTitle, Dictionary<string, IEnumerable<string>> validationData = null)
         {
+            var tDtoHeaders = GetHeadersFromDto<TDto>();
+            string[] columnHeaders = tDtoHeaders.Prepend("STT").ToArray(); // add stt to first column
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
             using (var package = new ExcelPackage())
             {
@@ -44,7 +48,7 @@ namespace DemoImportExport.Helper
                 int endRow = 1000;
 
                 // create column and style default
-                CreateColumnHeader(columnHeaders, ws, dataStartRow, endRow, keyRedis);
+                CreateColumnHeader<TDto>(columnHeaders, ws, dataStartRow, endRow, keyRedis);
 
                 // Data validation
                 if (validationData != null)
@@ -53,7 +57,7 @@ namespace DemoImportExport.Helper
                 }
 
                 // Write data
-                if(data != null)
+                if (data.Count() > 0)
                 {
                     ToConvertDataTable(data, ws);
                 }
@@ -65,7 +69,18 @@ namespace DemoImportExport.Helper
                 }
             }
         }
-        public static void CreateColumnHeader(string[] columnHeaders, ExcelWorksheet worksheet, int dataStartRow, int endRow, string? keyRedis)
+
+        private static string[] GetHeadersFromDto<TDto>()
+        {
+            return typeof(TDto).GetProperties()
+                .Select(prop =>
+                {
+                    var displayAttr = prop.GetCustomAttribute<DisplayAttribute>();
+                    return displayAttr?.Name ?? prop.Name;
+                })
+                .ToArray();
+        }
+        private static void CreateColumnHeader<TDto>(string[] columnHeaders, ExcelWorksheet worksheet, int dataStartRow, int endRow, string? keyRedis)
         {
             var columnWidths = columnHeaders.Select(header =>
             {
@@ -104,7 +119,7 @@ namespace DemoImportExport.Helper
                 }
             }
         }
-        public static string GetColumnLetter(int columnNumber)
+        private static string GetColumnLetter(int columnNumber)
         {
             var dividend = columnNumber;
             var columnName = string.Empty;
@@ -126,7 +141,7 @@ namespace DemoImportExport.Helper
         /// <param name="startRow"> dòng bắt đầu của cột </param>
         /// <param name="endRow"></param>
         /// <param name="columnValidators">danh sách cột chứ giá giá trị yêu cầu nhập</param>
-        public static void AddCustomValidation(
+        private static void AddCustomValidation(
                     ExcelWorksheet worksheet,
                     string[] columnHeaders,
                     int startRow,
@@ -168,7 +183,7 @@ namespace DemoImportExport.Helper
         /// <typeparam name="T">kiểu thực thể T muốn chuyển đổi </typeparam>
         /// <param name="items">mảng các thực thể kiểu T </param>
         /// <returns>datatable</returns>
-        public static DataTable ToConvertDataTable<T>(IEnumerable<T> items, ExcelWorksheet ws)
+        private static DataTable ToConvertDataTable<T>(IEnumerable<T> items, ExcelWorksheet ws)
         {
             DataTable dt = new DataTable(typeof(T).Name);
             PropertyInfo[] propInfo = typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public);
@@ -236,5 +251,124 @@ namespace DemoImportExport.Helper
                 }
             };
         }
+        #endregion
+        #region read file 
+        private static void ValidateExcelHeaders<TDto>(ExcelWorksheet worksheet, int headerRow = 3)
+        {
+            var expectedHeaders = typeof(TDto).GetProperties()
+                .Select(prop => prop.GetCustomAttribute<DisplayAttribute>()?.Name ?? prop.Name)
+                .ToArray();
+
+            var actualHeaders = new List<string>();
+            int col = 1;
+
+            while (true)
+            {
+                var cellVal = worksheet.Cells[headerRow, col].Text?.Trim();
+                if (string.IsNullOrEmpty(cellVal)) break;
+
+                actualHeaders.Add(cellVal);
+                col++;
+            }
+
+            if (actualHeaders.Count == 0)
+                throw new Exception("Không tìm thấy cột tiêu đề trong file.");
+
+            var actualWithoutFirst = actualHeaders.Skip(1).ToArray();
+
+            if (actualWithoutFirst.Length != expectedHeaders.Length ||
+                !expectedHeaders.SequenceEqual(actualWithoutFirst))
+            {
+                throw new Exception("File không đúng định dạng mẫu. Vui lòng sử dụng đúng file mẫu.");
+            }
+        }
+        public static List<TDto> ReadExcel<TDto>(Stream excelStream) where TDto : new()
+        {
+            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+            var result = new List<TDto>();
+            using (var package = new ExcelPackage(excelStream))
+            {
+                var worksheet = package.Workbook.Worksheets.FirstOrDefault();
+                if (worksheet == null)
+                    throw new Exception("Không tìm thấy sheet trong file Excel.");
+
+                ValidateExcelHeaders<TDto>(worksheet);
+
+                int headerRow = 3;
+                int totalColumns = worksheet.Dimension.End.Column;
+                int totalRows = worksheet.Dimension.End.Row;
+                // Lấy tên cột
+                var headers = new List<string>();
+                for (int col = 1; col <= totalColumns; col++)
+                {
+                    var header = worksheet.Cells[headerRow, col].Text?.Trim();
+                    if (string.IsNullOrWhiteSpace(header)) break;
+                    headers.Add(header);
+                }
+                var properties = typeof(TDto).GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                    .ToDictionary(p => p.GetCustomAttribute<DisplayAttribute>()?.Name.ToLower() ?? p.Name.ToLower(), p => p);
+                for (int row = headerRow + 1; row <= totalRows; row++)
+                {
+                    var item = new TDto();
+                    bool hasValue = false;
+                    var stop = 0; 
+                    for (int col = 1; col <= headers.Count; col++)
+                    {
+                        string columnName = headers[col - 1];
+                        var cellValue = worksheet.Cells[row, col].Text?.Trim();
+
+                        if (!string.IsNullOrEmpty(cellValue))
+                        {
+                            hasValue = true;
+                        }
+                        else
+                        {
+                            stop++;
+                            if (stop == headers.Count) break;
+                        }
+
+                        if (properties.TryGetValue(columnName.ToLower(), out var prop))
+                        {
+                            try
+                            {
+                                Type targetType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+                                object convertedValue = null;
+                                if (cellValue == null || string.IsNullOrWhiteSpace(cellValue.ToString()))
+                                {
+                                    convertedValue = null;
+                                }
+                                else if (targetType.IsEnum)
+                                {
+                                    convertedValue = Enum.Parse(targetType, cellValue.ToString(), ignoreCase: true);
+                                }
+                                else if (targetType == typeof(DateTime))
+                                {
+                                    convertedValue = DateTime.ParseExact(cellValue, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture);
+                                }
+                                else if (targetType == typeof(TimeSpan))
+                                {
+                                    convertedValue = TimeSpan.Parse(cellValue.ToString());
+                                }
+                                else
+                                {
+                                    convertedValue = Convert.ChangeType(cellValue, targetType);
+                                }
+
+                                prop.SetValue(item, convertedValue);
+                            }
+                            catch
+                            {
+                                // skip error 
+                            }
+                        }
+                    }
+                    if (hasValue)
+                        result.Add(item);
+                    if (stop == headers.Count) break;
+                }
+            }
+            return result;
+        }
+        #endregion
     }
 }

@@ -119,3 +119,75 @@
 2025-05-07 16:15:52.7236 Info Validating config: TargetNames=lifetimeConsole, ownFile-web, ConfigItems=32, FilePath=D:\.NET\ImportExportWithEPPlus\bin\Debug\net8.0\nlog.config
 2025-05-07 16:15:52.7314 Info Configuration initialized.
 2025-05-07 16:15:53.2357 Info Validating config: TargetNames=lifetimeConsole, ownFile-web, ConfigItems=32, FilePath=D:\.NET\ImportExportWithEPPlus\bin\Debug\net8.0\nlog.config
+2025-05-07 17:28:04.4481 Info Registered target NLog.Targets.FileTarget(Name=ownFile-web)
+2025-05-07 17:28:04.4632 Info Registered target NLog.Targets.ConsoleTarget(Name=lifetimeConsole)
+2025-05-07 17:28:04.4667 Info NLog, Version=5.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c. File version: 5.4.0.3182. Product version: 5.4.0+4d45d445601312040107cbe2ac00e56c4bf4a60b. GlobalAssemblyCache: False
+2025-05-07 17:28:04.4907 Info Validating config: TargetNames=lifetimeConsole, ownFile-web, ConfigItems=32, FilePath=D:\.NET\ImportExportWithEPPlus\bin\Debug\net8.0\nlog.config
+2025-05-07 17:28:04.5008 Info Configuration initialized.
+2025-05-07 17:28:05.6342 Info Validating config: TargetNames=lifetimeConsole, ownFile-web, ConfigItems=32, FilePath=D:\.NET\ImportExportWithEPPlus\bin\Debug\net8.0\nlog.config
+2025-05-08 09:05:22.3090 Info Registered target NLog.Targets.FileTarget(Name=ownFile-web)
+2025-05-08 09:05:22.3318 Info Registered target NLog.Targets.ConsoleTarget(Name=lifetimeConsole)
+2025-05-08 09:05:22.3318 Info NLog, Version=5.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c. File version: 5.4.0.3182. Product version: 5.4.0+4d45d445601312040107cbe2ac00e56c4bf4a60b. GlobalAssemblyCache: False
+2025-05-08 09:05:22.3673 Info Validating config: TargetNames=lifetimeConsole, ownFile-web, ConfigItems=32, FilePath=D:\.NET\ImportExportWithEPPlus\bin\Debug\net8.0\nlog.config
+2025-05-08 09:05:22.3799 Info Configuration initialized.
+2025-05-08 09:05:23.7098 Info Validating config: TargetNames=lifetimeConsole, ownFile-web, ConfigItems=32, FilePath=D:\.NET\ImportExportWithEPPlus\bin\Debug\net8.0\nlog.config
+2025-05-08 09:30:49.4167 Info Registered target NLog.Targets.FileTarget(Name=ownFile-web)
+2025-05-08 09:30:49.4222 Info Registered target NLog.Targets.ConsoleTarget(Name=lifetimeConsole)
+2025-05-08 09:30:49.4222 Info NLog, Version=5.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c. File version: 5.4.0.3182. Product version: 5.4.0+4d45d445601312040107cbe2ac00e56c4bf4a60b. GlobalAssemblyCache: False
+2025-05-08 09:30:49.4436 Info Validating config: TargetNames=lifetimeConsole, ownFile-web, ConfigItems=32, FilePath=D:\.NET\ImportExportWithEPPlus\bin\Debug\net8.0\nlog.config
+2025-05-08 09:30:49.4509 Info Configuration initialized.
+2025-05-08 09:30:49.9622 Info Validating config: TargetNames=lifetimeConsole, ownFile-web, ConfigItems=32, FilePath=D:\.NET\ImportExportWithEPPlus\bin\Debug\net8.0\nlog.config
+2025-05-08 09:36:43.6080 Info Registered target NLog.Targets.FileTarget(Name=ownFile-web)
+2025-05-08 09:36:43.6128 Info Registered target NLog.Targets.ConsoleTarget(Name=lifetimeConsole)
+2025-05-08 09:36:43.6128 Info NLog, Version=5.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c. File version: 5.4.0.3182. Product version: 5.4.0+4d45d445601312040107cbe2ac00e56c4bf4a60b. GlobalAssemblyCache: False
+2025-05-08 09:36:43.6305 Info Validating config: TargetNames=lifetimeConsole, ownFile-web, ConfigItems=32, FilePath=D:\.NET\ImportExportWithEPPlus\bin\Debug\net8.0\nlog.config
+2025-05-08 09:36:43.6384 Info Configuration initialized.
+2025-05-08 09:36:43.9047 Info Validating config: TargetNames=lifetimeConsole, ownFile-web, ConfigItems=32, FilePath=D:\.NET\ImportExportWithEPPlus\bin\Debug\net8.0\nlog.config
+2025-05-08 09:37:43.1589 Info Registered target NLog.Targets.FileTarget(Name=ownFile-web)
+2025-05-08 09:37:43.1589 Info Registered target NLog.Targets.ConsoleTarget(Name=lifetimeConsole)
+2025-05-08 09:37:43.1589 Info NLog, Version=5.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c. File version: 5.4.0.3182. Product version: 5.4.0+4d45d445601312040107cbe2ac00e56c4bf4a60b. GlobalAssemblyCache: False
+2025-05-08 09:37:43.1731 Info Validating config: TargetNames=lifetimeConsole, ownFile-web, ConfigItems=32, FilePath=D:\.NET\ImportExportWithEPPlus\bin\Debug\net8.0\nlog.config
+2025-05-08 09:37:43.1731 Info Configuration initialized.
+2025-05-08 09:37:43.2424 Info Validating config: TargetNames=lifetimeConsole, ownFile-web, ConfigItems=32, FilePath=D:\.NET\ImportExportWithEPPlus\bin\Debug\net8.0\nlog.config
+2025-05-08 09:37:51.2851 Info Registered target NLog.Targets.FileTarget(Name=ownFile-web)
+2025-05-08 09:37:51.2851 Info Registered target NLog.Targets.ConsoleTarget(Name=lifetimeConsole)
+2025-05-08 09:37:51.2851 Info NLog, Version=5.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c. File version: 5.4.0.3182. Product version: 5.4.0+4d45d445601312040107cbe2ac00e56c4bf4a60b. GlobalAssemblyCache: False
+2025-05-08 09:37:51.3060 Info Validating config: TargetNames=lifetimeConsole, ownFile-web, ConfigItems=32, FilePath=D:\.NET\ImportExportWithEPPlus\bin\Debug\net8.0\nlog.config
+2025-05-08 09:37:51.3130 Info Configuration initialized.
+2025-05-08 09:37:51.5795 Info Validating config: TargetNames=lifetimeConsole, ownFile-web, ConfigItems=32, FilePath=D:\.NET\ImportExportWithEPPlus\bin\Debug\net8.0\nlog.config
+2025-05-08 09:45:16.1961 Info Registered target NLog.Targets.FileTarget(Name=ownFile-web)
+2025-05-08 09:45:16.2003 Info Registered target NLog.Targets.ConsoleTarget(Name=lifetimeConsole)
+2025-05-08 09:45:16.2003 Info NLog, Version=5.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c. File version: 5.4.0.3182. Product version: 5.4.0+4d45d445601312040107cbe2ac00e56c4bf4a60b. GlobalAssemblyCache: False
+2025-05-08 09:45:16.2181 Info Validating config: TargetNames=lifetimeConsole, ownFile-web, ConfigItems=32, FilePath=D:\.NET\ImportExportWithEPPlus\bin\Debug\net8.0\nlog.config
+2025-05-08 09:45:16.2181 Info Configuration initialized.
+2025-05-08 09:45:19.4592 Info Validating config: TargetNames=lifetimeConsole, ownFile-web, ConfigItems=32, FilePath=D:\.NET\ImportExportWithEPPlus\bin\Debug\net8.0\nlog.config
+2025-05-08 10:00:53.7325 Info Registered target NLog.Targets.FileTarget(Name=ownFile-web)
+2025-05-08 10:00:53.7391 Info Registered target NLog.Targets.ConsoleTarget(Name=lifetimeConsole)
+2025-05-08 10:00:53.7391 Info NLog, Version=5.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c. File version: 5.4.0.3182. Product version: 5.4.0+4d45d445601312040107cbe2ac00e56c4bf4a60b. GlobalAssemblyCache: False
+2025-05-08 10:00:53.7652 Info Validating config: TargetNames=lifetimeConsole, ownFile-web, ConfigItems=32, FilePath=D:\.NET\ImportExportWithEPPlus\bin\Debug\net8.0\nlog.config
+2025-05-08 10:00:53.7652 Info Configuration initialized.
+2025-05-08 10:00:54.1621 Info Validating config: TargetNames=lifetimeConsole, ownFile-web, ConfigItems=32, FilePath=D:\.NET\ImportExportWithEPPlus\bin\Debug\net8.0\nlog.config
+2025-05-08 10:11:29.3034 Info Registered target NLog.Targets.FileTarget(Name=ownFile-web)
+2025-05-08 10:11:29.3034 Info Registered target NLog.Targets.ConsoleTarget(Name=lifetimeConsole)
+2025-05-08 10:11:29.3109 Info NLog, Version=5.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c. File version: 5.4.0.3182. Product version: 5.4.0+4d45d445601312040107cbe2ac00e56c4bf4a60b. GlobalAssemblyCache: False
+2025-05-08 10:11:29.3275 Info Validating config: TargetNames=lifetimeConsole, ownFile-web, ConfigItems=32, FilePath=D:\.NET\ImportExportWithEPPlus\bin\Debug\net8.0\nlog.config
+2025-05-08 10:11:29.3275 Info Configuration initialized.
+2025-05-08 10:11:29.6804 Info Validating config: TargetNames=lifetimeConsole, ownFile-web, ConfigItems=32, FilePath=D:\.NET\ImportExportWithEPPlus\bin\Debug\net8.0\nlog.config
+2025-05-08 10:12:07.8531 Info Registered target NLog.Targets.FileTarget(Name=ownFile-web)
+2025-05-08 10:12:07.8586 Info Registered target NLog.Targets.ConsoleTarget(Name=lifetimeConsole)
+2025-05-08 10:12:07.8586 Info NLog, Version=5.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c. File version: 5.4.0.3182. Product version: 5.4.0+4d45d445601312040107cbe2ac00e56c4bf4a60b. GlobalAssemblyCache: False
+2025-05-08 10:12:07.8787 Info Validating config: TargetNames=lifetimeConsole, ownFile-web, ConfigItems=32, FilePath=D:\.NET\ImportExportWithEPPlus\bin\Debug\net8.0\nlog.config
+2025-05-08 10:12:07.8883 Info Configuration initialized.
+2025-05-08 10:12:08.1913 Info Validating config: TargetNames=lifetimeConsole, ownFile-web, ConfigItems=32, FilePath=D:\.NET\ImportExportWithEPPlus\bin\Debug\net8.0\nlog.config
+2025-05-08 10:17:41.8984 Info Registered target NLog.Targets.FileTarget(Name=ownFile-web)
+2025-05-08 10:17:41.9041 Info Registered target NLog.Targets.ConsoleTarget(Name=lifetimeConsole)
+2025-05-08 10:17:41.9041 Info NLog, Version=5.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c. File version: 5.4.0.3182. Product version: 5.4.0+4d45d445601312040107cbe2ac00e56c4bf4a60b. GlobalAssemblyCache: False
+2025-05-08 10:17:41.9246 Info Validating config: TargetNames=lifetimeConsole, ownFile-web, ConfigItems=32, FilePath=D:\.NET\ImportExportWithEPPlus\bin\Debug\net8.0\nlog.config
+2025-05-08 10:17:41.9246 Info Configuration initialized.
+2025-05-08 10:17:42.1975 Info Validating config: TargetNames=lifetimeConsole, ownFile-web, ConfigItems=32, FilePath=D:\.NET\ImportExportWithEPPlus\bin\Debug\net8.0\nlog.config
+2025-05-08 10:37:52.0437 Info Registered target NLog.Targets.FileTarget(Name=ownFile-web)
+2025-05-08 10:37:52.0492 Info Registered target NLog.Targets.ConsoleTarget(Name=lifetimeConsole)
+2025-05-08 10:37:52.0492 Info NLog, Version=5.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c. File version: 5.4.0.3182. Product version: 5.4.0+4d45d445601312040107cbe2ac00e56c4bf4a60b. GlobalAssemblyCache: False
+2025-05-08 10:37:52.0671 Info Validating config: TargetNames=lifetimeConsole, ownFile-web, ConfigItems=32, FilePath=D:\.NET\ImportExportWithEPPlus\bin\Debug\net8.0\nlog.config
+2025-05-08 10:37:52.0761 Info Configuration initialized.
+2025-05-08 10:37:52.3808 Info Validating config: TargetNames=lifetimeConsole, ownFile-web, ConfigItems=32, FilePath=D:\.NET\ImportExportWithEPPlus\bin\Debug\net8.0\nlog.config
