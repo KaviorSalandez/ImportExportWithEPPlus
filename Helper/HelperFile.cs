@@ -282,7 +282,7 @@ namespace DemoImportExport.Helper
                 throw new Exception("File không đúng định dạng mẫu. Vui lòng sử dụng đúng file mẫu.");
             }
         }
-        public static List<TDto> ReadExcel<TDto>(Stream excelStream) where TDto : new()
+        public static async Task<List<TDto>> ReadExcel<TDto>(Stream excelStream) where TDto : new()
         {
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
             var result = new List<TDto>();
@@ -307,64 +307,96 @@ namespace DemoImportExport.Helper
                 }
                 var properties = typeof(TDto).GetProperties(BindingFlags.Public | BindingFlags.Instance)
                     .ToDictionary(p => p.GetCustomAttribute<DisplayAttribute>()?.Name.ToLower() ?? p.Name.ToLower(), p => p);
-                for (int row = headerRow + 1; row <= totalRows; row++)
+                // Tạo danh sách các task để xử lý song song theo từng dòng
+                var tasks = new List<Task<List<TDto>>>();
+
+                // Chia công việc thành các phần nhỏ và xử lý song song
+                const int batchSize = 1000;  // Chia thành các phần nhỏ để xử lý song song
+                int startRow = headerRow + 1;
+                int endRow = Math.Min(startRow + batchSize - 1, totalRows);
+
+                while (startRow <= totalRows)
                 {
-                    var item = new TDto();
-                    bool hasValue = false;
-                    var stop = 0; 
-                    for (int col = 1; col <= headers.Count; col++)
+                    int batchStartRow = startRow;
+                    int batchEndRow = endRow;
+                    tasks.Add(Task.Run(() =>
                     {
-                        string columnName = headers[col - 1];
-                        var cellValue = worksheet.Cells[row, col].Text?.Trim();
+                        var batchResult = new List<TDto>();
+                        for (int row = batchStartRow; row <= batchEndRow; row++)
+                        {
+                            var item = new TDto();
+                            bool hasValue = false;
+                            var stop = 0;
 
-                        if (!string.IsNullOrEmpty(cellValue))
-                        {
-                            hasValue = true;
-                        }
-                        else
-                        {
-                            stop++;
-                            if (stop == headers.Count) break;
-                        }
-
-                        if (properties.TryGetValue(columnName.ToLower(), out var prop))
-                        {
-                            try
+                            for (int col = 1; col <= headers.Count; col++)
                             {
-                                Type targetType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
-                                object convertedValue = null;
-                                if (cellValue == null || string.IsNullOrWhiteSpace(cellValue.ToString()))
+                                string columnName = headers[col - 1];
+                                var cellValue = worksheet.Cells[row, col].Text?.Trim();
+
+                                if (!string.IsNullOrEmpty(cellValue))
                                 {
-                                    convertedValue = null;
-                                }
-                                else if (targetType.IsEnum)
-                                {
-                                    convertedValue = Enum.Parse(targetType, cellValue.ToString(), ignoreCase: true);
-                                }
-                                else if (targetType == typeof(DateTime))
-                                {
-                                    convertedValue = DateTime.ParseExact(cellValue, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture);
-                                }
-                                else if (targetType == typeof(TimeSpan))
-                                {
-                                    convertedValue = TimeSpan.Parse(cellValue.ToString());
+                                    hasValue = true;
                                 }
                                 else
                                 {
-                                    convertedValue = Convert.ChangeType(cellValue, targetType);
+                                    stop++;
+                                    if (stop == headers.Count) break;
                                 }
 
-                                prop.SetValue(item, convertedValue);
+                                if (properties.TryGetValue(columnName.ToLower(), out var prop))
+                                {
+                                    try
+                                    {
+                                        Type targetType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+                                        object convertedValue = null;
+                                        if (string.IsNullOrWhiteSpace(cellValue))
+                                        {
+                                            convertedValue = null;
+                                        }
+                                        else if (targetType.IsEnum)
+                                        {
+                                            convertedValue = Enum.Parse(targetType, cellValue.ToString(), ignoreCase: true);
+                                        }
+                                        else if (targetType == typeof(DateTime))
+                                        {
+                                            convertedValue = DateTime.ParseExact(cellValue, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture);
+                                        }
+                                        else if (targetType == typeof(TimeSpan))
+                                        {
+                                            convertedValue = TimeSpan.Parse(cellValue.ToString());
+                                        }
+                                        else
+                                        {
+                                            convertedValue = Convert.ChangeType(cellValue, targetType);
+                                        }
+
+                                        prop.SetValue(item, convertedValue);
+                                    }
+                                    catch
+                                    {
+                                        // skip error 
+                                    }
+                                }
                             }
-                            catch
-                            {
-                                // skip error 
-                            }
+
+                            if (hasValue)
+                                batchResult.Add(item);
+                            if (stop == headers.Count) break;
                         }
-                    }
-                    if (hasValue)
-                        result.Add(item);
-                    if (stop == headers.Count) break;
+                        return batchResult;
+                    }));
+
+                    startRow = endRow + 1;
+                    endRow = Math.Min(startRow + batchSize - 1, totalRows);
+                }
+
+                // Chờ tất cả các task hoàn thành
+                var allResults = await Task.WhenAll(tasks);
+
+                // Gộp kết quả từ tất cả các batch
+                foreach (var batch in allResults)
+                {
+                    result.AddRange(batch);
                 }
             }
             return result;

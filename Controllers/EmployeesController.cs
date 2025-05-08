@@ -124,7 +124,7 @@ namespace DemoImportExport.Controllers
                 await file.CopyToAsync(stream);
                 stream.Position = 0; // Reset the stream position to the beginning
                 // Read the Excel file and map it to EmployeeExcelDto
-                var listEmployee = HelperFile.ReadExcel<EmployeeExcelDto>(stream);
+                var listEmployee = await HelperFile.ReadExcel<EmployeeExcelDto>(stream);
                 stream.Close();
 
                 return Ok(new ApiResponse<object>
