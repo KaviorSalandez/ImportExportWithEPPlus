@@ -1,5 +1,6 @@
 ﻿using DemoImportExport.DTOs.Employees;
 using DemoImportExport.Models;
+using DemoImportExport.Models.Response;
 
 namespace DemoImportExport.Services.EmployeeServices
 {
@@ -47,7 +48,6 @@ namespace DemoImportExport.Services.EmployeeServices
         ///  created_at: 2023/12/20 
 
         public int ImportDatabase(string idImport);
-
-
+        public Task<DataImportResponse> HandleDataImport(IFormFile file);
     }
 }

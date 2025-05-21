@@ -67,22 +67,7 @@ namespace DemoImportExport
                 using (var scope = app.Services.CreateScope())
                 {
                     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                    try
-                    {
-                        if (dbContext.Database.CanConnect())
-                        {
-                            dbContext.Database.Migrate();
-                        }
-                        else
-                        {
-                            throw new Exception("Not found Database.");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-
-                        throw new Exception(ex.Message);
-                    }
+                    dbContext.Database.Migrate();
                 }
 
                 app.UseExceptionHandler(appBuilder =>
@@ -109,7 +94,7 @@ namespace DemoImportExport
                 app.UseHttpsRedirection();
                 app.UseStaticFiles();
                 app.UseRouting();
-               
+
                 app.UseAuthorization();
 
                 app.Use(async (context, next) =>

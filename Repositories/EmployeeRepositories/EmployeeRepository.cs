@@ -2,6 +2,7 @@
 using DemoImportExport.Persistents;
 using Microsoft.EntityFrameworkCore;
 using EFCore.BulkExtensions;
+using System.Collections.Concurrent;
 
 namespace DemoImportExport.Repositories.EmployeeRepositories
 {
@@ -73,5 +74,15 @@ namespace DemoImportExport.Repositories.EmployeeRepositories
 
             return employees;
         }
+
+        public async Task<List<string>> GetExistingEmployeeCodes(List<string> codes)
+        {
+            return await _context.Employees
+                            .Where(e => codes.Contains(e.EmployeeCode))
+                            .Select(e => e.EmployeeCode)
+                            .ToListAsync();
+        }
+
+
     }
 }

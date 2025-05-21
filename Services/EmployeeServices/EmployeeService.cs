@@ -15,6 +15,9 @@ using AutoMapper;
 using DemoImportExport.DTOs.Employee;
 using DemoImportExport.Uow;
 using DemoImportExport.Helper;
+using DemoImportExport.Models.Response;
+using Microsoft.EntityFrameworkCore.Internal;
+using System.Collections.Concurrent;
 
 namespace DemoImportExport.Services.EmployeeServices
 {
@@ -119,7 +122,7 @@ namespace DemoImportExport.Services.EmployeeServices
                 var typeGenders = HelperFile.ToValidationDict<EGender>("Giới tính");
                 var file = HelperFile.GenerateExcelFile<EmployeeExcelDto>(
                     data,
-                    keyRedis,
+                    false,
                     "Danh sách nhân viên",
                     typeGenders
                 );
@@ -570,6 +573,81 @@ namespace DemoImportExport.Services.EmployeeServices
 
             //return await GenerateExcelFile(data, keyRedis);
             throw new Exception();
+        }
+
+        public async Task<DataImportResponse> HandleDataImport(IFormFile file)
+        {
+            using var stream = new MemoryStream();
+            await file.CopyToAsync(stream);
+            stream.Position = 0; // Reset the stream position to the beginning
+                                 // Read the Excel file and map it to EmployeeExcelDto
+            var employeeExcelDtos = await HelperFile.ReadExcel<EmployeeExcelDto>(stream);
+            stream.Close();
+
+            var fileCodes = employeeExcelDtos
+                            .Where(x => !string.IsNullOrWhiteSpace(x.EmployeeCode))
+                            .Select(x => x.EmployeeCode.Trim())
+                            .Distinct()
+                            .ToList();
+
+
+            // 3. Tìm mã đã tồn tại trong DB (song song, theo batch)
+            var existedInDb = new ConcurrentBag<string>();
+            int batchSize = 1000;
+            int maxDegreeOfParallelism = 10;
+            var semaphore = new SemaphoreSlim(maxDegreeOfParallelism);
+            var tasks = new List<Task>();
+
+            for (int i = 0; i < fileCodes.Count; i += batchSize)
+            {
+                var batch = fileCodes.Skip(i).Take(batchSize).Distinct().ToList();
+
+                await semaphore.WaitAsync();
+                tasks.Add(Task.Run(async () =>
+                {
+                    try
+                    {
+                        var existed = await UnitOfWork.EmployeeRepository.GetExistingEmployeeCodes(batch);
+                        foreach (var code in existed)
+                            existedInDb.Add(code);
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                    }
+                }));
+            }
+
+            await Task.WhenAll(tasks);
+
+            var duplicateInFile = fileCodes
+                                .GroupBy(x => x)
+                                .Where(g => g.Count() > 1)
+                                .Select(g => g.Key)
+                                .ToHashSet();
+
+            var existedSet = new HashSet<string>(existedInDb);
+            existedSet.UnionWith(duplicateInFile);
+
+
+            var dataExists = employeeExcelDtos
+                            .Where(x => existedSet.Contains(x.EmployeeCode))
+                            .ToList();
+
+            var dataImport = employeeExcelDtos
+                            .Where(x => !existedSet.Contains(x.EmployeeCode))
+                            .ToList();
+
+            var redisKey = $"import-employee-{Guid.NewGuid()}";
+            _cacheService.SetData(redisKey, dataImport, DateTimeOffset.UtcNow.AddMinutes(10));
+
+            return new DataImportResponse()
+            {
+                KeyRedis = redisKey,
+                DataImport = dataImport,
+                DataExists = dataExists,
+                FileUrl = "redis_url_file"
+            };
         }
     }
 }

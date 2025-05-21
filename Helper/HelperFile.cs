@@ -3,10 +3,9 @@ using OfficeOpenXml;
 using System.Reflection;
 using System.Data;
 using DemoImportExport.Extensions;
-using DemoImportExport.Enums;
 using OfficeOpenXml.DataValidation;
 using System.ComponentModel.DataAnnotations;
-using DocumentFormat.OpenXml.Presentation;
+using DemoImportExport.Models.Response;
 
 namespace DemoImportExport.Helper
 {
@@ -22,7 +21,7 @@ namespace DemoImportExport.Helper
         /// <param name="sheetTitle">Title sheet</param>
         /// <param name="validationData">Để kiểu Dictionary(Tên cột, list giá trị) cho phép bắt buộc nhập những cột giá trị trong mảng theo yêu cầu nghiệp vụ </param>
         /// <returns></returns>
-        public static byte[] GenerateExcelFile<TDto>(IEnumerable<TDto> data, string keyRedis, string sheetTitle, Dictionary<string, IEnumerable<string>> validationData = null)
+        public static byte[] GenerateExcelFile<TDto>(IEnumerable<TDto> data, bool showStatus, string sheetTitle, Dictionary<string, IEnumerable<string>> validationData = null)
         {
             var tDtoHeaders = GetHeadersFromDto<TDto>();
             string[] columnHeaders = tDtoHeaders.Prepend("STT").ToArray(); // add stt to first column
@@ -39,7 +38,7 @@ namespace DemoImportExport.Helper
                 ws.Row(1).Height = 25;
 
                 // Add extra column if redis key exists
-                if (!string.IsNullOrEmpty(keyRedis))
+                if (showStatus)
                 {
                     columnHeaders = columnHeaders.Concat(new[] { "Tình trạng" }).ToArray();
                 }
@@ -48,7 +47,7 @@ namespace DemoImportExport.Helper
                 int endRow = 1000;
 
                 // create column and style default
-                CreateColumnHeader<TDto>(columnHeaders, ws, dataStartRow, endRow, keyRedis);
+                CreateColumnHeader<TDto>(columnHeaders, ws, dataStartRow, endRow, showStatus);
 
                 // Data validation
                 if (validationData != null)
@@ -80,14 +79,14 @@ namespace DemoImportExport.Helper
                 })
                 .ToArray();
         }
-        private static void CreateColumnHeader<TDto>(string[] columnHeaders, ExcelWorksheet worksheet, int dataStartRow, int endRow, string? keyRedis)
+        private static void CreateColumnHeader<TDto>(string[] columnHeaders, ExcelWorksheet worksheet, int dataStartRow, int endRow, bool showStatus)
         {
             var columnWidths = columnHeaders.Select(header =>
             {
                 return Math.Max(header.Length + 5, 10);
             }).ToArray();
 
-            if (keyRedis != null)
+            if (showStatus)
             {
                 int[] extendedColumnWidths = new int[columnWidths.Length + 1];
                 for (int i = 0; i < columnWidths.Length; i++)

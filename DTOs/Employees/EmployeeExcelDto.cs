@@ -14,11 +14,11 @@ namespace DemoImportExport.DTOs.Employees
     {
         // Mã nhân viên
         [Display(Name = "Mã Nhân Viên")]
+        [Required(ErrorMessage = CDKConst.ERRMSG_DepartmentId)]
         public string EmployeeCode { get; set; }
         // Tên Nhân Viên 
         [Display(Name = "Tên Nhân Viên")]
         public string EmployeeName { get; set; }
-        [Required(ErrorMessage = CDKConst.ERRMSG_DepartmentId)]
         // Giới tính
         [Display(Name = "Giới tính")]
         public CDKEnum.Gender? Gender { get; set; }
@@ -30,13 +30,9 @@ namespace DemoImportExport.DTOs.Employees
         [Display(Name = "Tên Vị trí")]
         public string PositionName { get; set; }
 
-        [Required(ErrorMessage = CDKConst.ERRMSG_EmployeeCode)]
         // Tên phòng ban 
         [Display(Name = "Tên Đơn Vị")]
         public string DepartmentName { get; set; }
-
-        [Required(ErrorMessage = CDKConst.ERRMSG_PositionId)]
-        
 
         // Số tài khoản ngân hàng
         [Display(Name = "Số Tài Khoản")]

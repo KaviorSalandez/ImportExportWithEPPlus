@@ -107,25 +107,18 @@ namespace DemoImportExport.Controllers
         [HttpPost(RoutesConst.ImportEmployeeAPI)]
         public async Task<ActionResult<ApiResponse<object>>> ImportEmployee(IFormFile file)
         {
-            if (file == null || file.Length == 0)
+            if (file == null || file.Length == 0 || !Path.GetExtension(file.FileName).Equals(".xlsx", StringComparison.OrdinalIgnoreCase))
             {
                 return BadRequest(new ApiResponse<object>
                 {
                     Status = 400,
-                    Message = "File không hợp lệ.",
+                    Message = "No file uploaded.",
                     Data = null,
-                    Error = "No file uploaded"
                 });
             }
-
             try
             {
-                using var stream = new MemoryStream();
-                await file.CopyToAsync(stream);
-                stream.Position = 0; // Reset the stream position to the beginning
-                // Read the Excel file and map it to EmployeeExcelDto
-                var listEmployee = await HelperFile.ReadExcel<EmployeeExcelDto>(stream);
-                stream.Close();
+               var listEmployee = await _employeeService.HandleDataImport(file);
 
                 return Ok(new ApiResponse<object>
                 {

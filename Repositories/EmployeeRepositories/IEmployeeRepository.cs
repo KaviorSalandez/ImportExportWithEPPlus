@@ -11,6 +11,6 @@ namespace DemoImportExport.Repositories.EmployeeRepositories
         int InsertMany(List<Employee> entities);
         public Task<IEnumerable<Employee>> FindAllFilter(int pageSize = 10, int pageNumber = 1, string search = "", string? email = "");
         Task<IEnumerable<Employee>> FindManyRecord(List<int> Ids);
-
+        Task<List<string>> GetExistingEmployeeCodes(List<string> codes);
     }
 }
