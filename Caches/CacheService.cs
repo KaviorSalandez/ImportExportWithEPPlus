@@ -43,7 +43,7 @@ namespace DemoImportExport.Caches
 
         public bool SetData<T>(string key, T value, DateTimeOffset expirationTime)
         {
-            var expirtyTime = expirationTime.DateTime.Subtract(DateTime.Now);
+            var expirtyTime = expirationTime.UtcDateTime.Subtract(DateTime.UtcNow);
             return _cacheDb.StringSet(key, JsonSerializer.Serialize(value), expirtyTime);
         }
     }

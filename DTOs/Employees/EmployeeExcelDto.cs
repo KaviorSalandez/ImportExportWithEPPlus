@@ -27,12 +27,12 @@ namespace DemoImportExport.DTOs.Employees
         public DateTime? DOB { get; set; }
 
         // Tên chức vụ 
-        [Display(Name = "Tên Vị trí")]
-        public string PositionName { get; set; }
+        [Display(Name = "Mã Vị trí")]
+        public string PositionId { get; set; }
 
         // Tên phòng ban 
-        [Display(Name = "Tên Đơn Vị")]
-        public string DepartmentName { get; set; }
+        [Display(Name = "Mã Đơn Vị")]
+        public string DepartmentId { get; set; }
 
         // Số tài khoản ngân hàng
         [Display(Name = "Số Tài Khoản")]

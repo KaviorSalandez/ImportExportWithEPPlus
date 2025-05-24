@@ -6,6 +6,9 @@ using DemoImportExport.Extensions;
 using OfficeOpenXml.DataValidation;
 using System.ComponentModel.DataAnnotations;
 using DemoImportExport.Models.Response;
+using DemoImportExport.DTOs.Employees;
+using DocumentFormat.OpenXml.Spreadsheet;
+using DocumentFormat.OpenXml.Drawing.Charts;
 
 namespace DemoImportExport.Helper
 {
@@ -182,9 +185,9 @@ namespace DemoImportExport.Helper
         /// <typeparam name="T">kiểu thực thể T muốn chuyển đổi </typeparam>
         /// <param name="items">mảng các thực thể kiểu T </param>
         /// <returns>datatable</returns>
-        private static DataTable ToConvertDataTable<T>(IEnumerable<T> items, ExcelWorksheet ws)
+        private static System.Data.DataTable ToConvertDataTable<T>(IEnumerable<T> items, ExcelWorksheet ws)
         {
-            DataTable dt = new DataTable(typeof(T).Name);
+            System.Data.DataTable dt = new System.Data.DataTable(typeof(T).Name);
             PropertyInfo[] propInfo = typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public);
 
             // Thêm cột số thứ tự
@@ -399,6 +402,186 @@ namespace DemoImportExport.Helper
                 }
             }
             return result;
+        }
+
+        public static async Task<ReadExcelResult<TDto>> ReadExcel_V2<TDto>(Stream excelStream,
+                                                                             Func<List<TDto>, Task<HashSet<string>>> checkExistsFunc,
+                                                                             Func<TDto, string> getCodeFunc,
+                                                                             int batchSize) where TDto : new()
+        {
+            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+            var result = new ReadExcelResult<TDto>()
+            {
+                AllData = new List<TDto>(),
+                DataExists = new List<TDto>(),
+                DataImport = new List<TDto>()
+            };
+
+            using var package = new ExcelPackage(excelStream);
+            var worksheet = package.Workbook.Worksheets.FirstOrDefault();
+            if (worksheet == null)
+                throw new Exception("Không tìm thấy sheet trong file Excel.");
+
+            ValidateExcelHeaders<TDto>(worksheet);
+
+            int headerRow = 3;
+            int totalColumns = worksheet.Dimension.End.Column;
+            int totalRows = worksheet.Dimension.End.Row;
+
+            // Lấy tên cột header
+            var headers = new List<string>();
+            for (int col = 1; col <= totalColumns; col++)
+            {
+                var header = worksheet.Cells[headerRow, col].Text?.Trim();
+                if (string.IsNullOrWhiteSpace(header)) break;
+                headers.Add(header);
+            }
+
+            var properties = typeof(TDto).GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .ToDictionary(p => p.GetCustomAttribute<DisplayAttribute>()?.Name.ToLower() ?? p.Name.ToLower(), p => p);
+
+            int currentRow = headerRow + 1;
+            while (currentRow <= totalRows)
+            {
+                var batch = new List<TDto>();
+                int batchEndRow = Math.Min(currentRow + batchSize - 1, totalRows);
+
+                // Đọc batch tuần tự
+                for (int row = currentRow; row <= batchEndRow; row++)
+                {
+                    var item = new TDto();
+                    bool hasValue = false;
+                    int emptyCount = 0;
+
+
+                    for (int col = 1; col <= headers.Count; col++)
+                    {
+                        string columnName = headers[col - 1];
+                        var cellValue = worksheet.Cells[row, col].Text?.Trim();
+
+                        if (!string.IsNullOrEmpty(cellValue))
+                        {
+                            hasValue = true;
+                        }
+                        else
+                        {
+                            emptyCount++;
+                            if (emptyCount == headers.Count)
+                                break; // hết dữ liệu dòng này
+                        }
+
+                        if (properties.TryGetValue(columnName.ToLower(), out var prop))
+                        {
+                            try
+                            {
+                                Type targetType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+                                object convertedValue = null;
+
+                                if (string.IsNullOrWhiteSpace(cellValue))
+                                {
+                                    convertedValue = null;
+                                }
+                                else if (targetType.IsEnum)
+                                {
+                                    convertedValue = Enum.Parse(targetType, cellValue, ignoreCase: true);
+                                }
+                                else if (targetType == typeof(DateTime))
+                                {
+                                    convertedValue = DateTime.ParseExact(cellValue, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture);
+                                }
+                                else if (targetType == typeof(TimeSpan))
+                                {
+                                    convertedValue = TimeSpan.Parse(cellValue);
+                                }
+                                else
+                                {
+                                    convertedValue = Convert.ChangeType(cellValue, targetType);
+                                }
+
+                                prop.SetValue(item, convertedValue);
+                            }
+                            catch
+                            {
+                                // ignore error convert
+                            }
+                        }
+                    }
+
+                    if (hasValue)
+                        batch.Add(item);
+                    if (emptyCount == headers.Count) break;
+                }
+
+                // Gọi DB check tồn tại ngay cho batch này
+                var existedCodes = await checkExistsFunc(batch);
+                foreach (var item in batch)
+                {
+                    var code = getCodeFunc(item)?.Trim();
+                    if (!string.IsNullOrEmpty(code) && existedCodes.Contains(code))
+                        result.DataExists.Add(item);
+                    else
+                        result.DataImport.Add(item);
+                }
+
+                result.AllData.AddRange(batch);
+                currentRow = batchEndRow + 1;
+            }
+
+            return result;
+        }
+        #endregion
+
+        #region map row to dto
+        // Tạo map tên cột -> index cột (1-based)
+        private static Dictionary<string, int> GetHeaderMap(ExcelWorksheet ws)
+        {
+            var headerMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            int colCount = ws.Dimension.Columns;
+
+            for (int col = 1; col <= colCount; col++)
+            {
+                var cellValue = ws.Cells[3, col].Text?.Trim();
+                if (!string.IsNullOrEmpty(cellValue) && !headerMap.ContainsKey(cellValue))
+                    headerMap.Add(cellValue, col);
+            }
+            return headerMap;
+        }
+
+        public static TDto MapRowToDto<TDto>(ExcelWorksheet worksheet, int row) where TDto : new()
+        {
+            var dto = new TDto();
+            var type = typeof(TDto);
+
+            var headerMap = GetHeaderMap(worksheet);
+
+            foreach (var prop in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            {
+                // Nếu không có setter, bỏ qua
+                if (!prop.CanWrite) continue;
+
+                // Tên property dùng để tìm cột Excel
+                if (!headerMap.TryGetValue(prop.Name, out int colIndex))
+                    continue;
+
+                var cell = worksheet.Cells[row, colIndex];
+                if (cell == null || string.IsNullOrEmpty(cell.Text))
+                    continue;
+
+                object value = null;
+
+                try
+                {
+                    var targetType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+                    value = Convert.ChangeType(cell.Value, targetType);
+                }
+                catch
+                {
+                }
+
+                prop.SetValue(dto, value);
+            }
+
+            return dto;
         }
         #endregion
     }

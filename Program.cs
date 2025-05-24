@@ -1,4 +1,5 @@
 
+using System.IO.Compression;
 using System.Net;
 using DemoImportExport.Caches;
 using DemoImportExport.Mapping;
@@ -12,6 +13,7 @@ using DemoImportExport.Services.EmployeeServices;
 using DemoImportExport.Services.PositionServices;
 using DemoImportExport.Uow;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using NLog;
 using NLog.Web;
@@ -29,6 +31,22 @@ namespace DemoImportExport
             {
                 var builder = WebApplication.CreateBuilder(args);
 
+                builder.Services.AddResponseCompression(options =>
+                {
+                    options.EnableForHttps = true;
+                    options.Providers.Add<BrotliCompressionProvider>();
+                    options.Providers.Add<GzipCompressionProvider>();
+                });
+
+                builder.Services.Configure<BrotliCompressionProviderOptions>(options =>
+                {
+                    options.Level = CompressionLevel.Fastest;
+                });
+
+                builder.Services.Configure<GzipCompressionProviderOptions>(options =>
+                {
+                    options.Level = CompressionLevel.SmallestSize;
+                });
                 // Add services to the container.
 
                 builder.Services.AddControllers();
@@ -54,7 +72,7 @@ namespace DemoImportExport
                 builder.Host.UseNLog();
 
                 var app = builder.Build();
-
+                app.UseResponseCompression();
                 // Configure the HTTP request pipeline.
                 if (app.Environment.IsDevelopment())
                 {

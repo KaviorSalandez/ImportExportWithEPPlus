@@ -18,6 +18,7 @@ using DemoImportExport.Helper;
 using DemoImportExport.Models.Response;
 using Microsoft.EntityFrameworkCore.Internal;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace DemoImportExport.Services.EmployeeServices
 {
@@ -26,12 +27,14 @@ namespace DemoImportExport.Services.EmployeeServices
         private readonly ICacheService _cacheService;
         private readonly IMapper _mapper;
         private readonly ILogger<EmployeeService> _logger;
+        private readonly IServiceProvider _serviceProvider;
 
-        public EmployeeService(IUnitOfWork unitOfWork, ICacheService cacheService, IMapper mapper, ILogger<EmployeeService> logger) : base(unitOfWork)
+        public EmployeeService(IUnitOfWork unitOfWork, ICacheService cacheService, IMapper mapper, ILogger<EmployeeService> logger, IServiceProvider serviceProvider) : base(unitOfWork)
         {
             _cacheService = cacheService;
             _mapper = mapper;
             _logger = logger;
+            _serviceProvider = serviceProvider;
         }
 
         public async Task<IEnumerable<Employee>> GetAllAsync()
@@ -577,75 +580,142 @@ namespace DemoImportExport.Services.EmployeeServices
 
         public async Task<DataImportResponse> HandleDataImport(IFormFile file)
         {
+            var swTotal = Stopwatch.StartNew();
+            var sw = Stopwatch.StartNew();
+            //using var stream = new MemoryStream();
+            //await file.CopyToAsync(stream).ConfigureAwait(false);
+            //stream.Position = 0; // Reset the stream position to the beginning
+            //                     // Read the Excel file and map it to EmployeeExcelDto
+            //var employeeExcelDtos = await HelperFile.ReadExcel<EmployeeExcelDto>(stream).ConfigureAwait(false);
+            //stream.Close();
+            //sw.Stop();
+            //Console.WriteLine($"⏱️ Đọc & ánh xạ Excel: {sw.ElapsedMilliseconds} ms");
+
+
+            //// 1. Kiểm tra dữ liệu trong file
+            //var fileCodes = employeeExcelDtos
+            //                .Where(x => !string.IsNullOrWhiteSpace(x.EmployeeCode))
+            //                .Select(x => x.EmployeeCode.Trim())
+            //                .Distinct()
+            //                .ToList();
+            //// 3. Tìm mã đã tồn tại trong DB (song song, theo batch)
+            //sw.Restart();
+            //var existedInDb = new ConcurrentBag<string>();
+            //int batchSize = 500;
+            //int maxDegreeOfParallelism = 10;
+            //var semaphore = new SemaphoreSlim(maxDegreeOfParallelism);
+            //var tasks = new List<Task>();
+
+            //for (int i = 0; i < fileCodes.Count; i += batchSize)
+            //{
+            //    var batch = fileCodes.Skip(i).Take(batchSize).Distinct().ToList();
+
+            //    await semaphore.WaitAsync();
+            //    tasks.Add(Task.Run(async () =>
+            //    {
+            //        try
+            //        {
+            //            // when use task run, we need to create a new scope, because the task run will not use the scope of the current thread, EF core do not support query in multiple threads of the same context instance
+            //            using var scope = _serviceProvider.CreateScope(); // inject IServiceProvider từ bên ngoài
+            //            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+            //            var existed = await unitOfWork.EmployeeRepository.GetExistingEmployeeCodes(batch).ConfigureAwait(false);
+            //            foreach (var code in existed)
+            //                existedInDb.Add(code);
+            //        }
+            //        finally
+            //        {
+            //            semaphore.Release();
+            //        }
+            //    }));
+            //}
+
+            //await Task.WhenAll(tasks);
+            //sw.Stop();
+            //Console.WriteLine($"⏱️ Truy vấn DB kiểm tra mã tồn tại: {sw.ElapsedMilliseconds} ms");
+
+            //sw.Restart();
+
+            //var duplicateInFile = fileCodes
+            //                    .GroupBy(x => x)
+            //                    .Where(g => g.Count() > 1)
+            //                    .Select(g => g.Key)
+            //                    .ToHashSet();
+
+            //var existedSet = new HashSet<string>(existedInDb);
+            //existedSet.UnionWith(duplicateInFile);
+
+            //sw.Stop();
+            //Console.WriteLine($"⏱️ Xử lý trùng trong file & union kết quả: {sw.ElapsedMilliseconds} ms");
+
+            //sw.Restart();
+            ////var dataExists = employeeExcelDtos
+            ////                .Where(x => existedSet.Contains(x.EmployeeCode))
+            ////                .ToList();
+
+            ////var dataImport = employeeExcelDtos
+            ////                .Where(x => !existedSet.Contains(x.EmployeeCode))
+            ////                .ToList();
+
+            //var taskExists = Task.Run(() =>
+            //{
+            //    return employeeExcelDtos
+            //        .Where(x => existedSet.Contains(x.EmployeeCode))
+            //        .ToList();
+            //});
+
+            //var taskImport = Task.Run(() =>
+            //{
+            //    return employeeExcelDtos
+            //        .Where(x => !existedSet.Contains(x.EmployeeCode))
+            //        .ToList();
+            //});
+
+            //await Task.WhenAll(taskExists, taskImport);
+
+            //var dataExists = taskExists.Result;
+            //var dataImport = taskImport.Result;
+
             using var stream = new MemoryStream();
-            await file.CopyToAsync(stream);
-            stream.Position = 0; // Reset the stream position to the beginning
-                                 // Read the Excel file and map it to EmployeeExcelDto
-            var employeeExcelDtos = await HelperFile.ReadExcel<EmployeeExcelDto>(stream);
-            stream.Close();
+            await file.CopyToAsync(stream).ConfigureAwait(false);
+            stream.Position = 0; // reset lại đầu stream
 
-            var fileCodes = employeeExcelDtos
-                            .Where(x => !string.IsNullOrWhiteSpace(x.EmployeeCode))
-                            .Select(x => x.EmployeeCode.Trim())
-                            .Distinct()
-                            .ToList();
-
-
-            // 3. Tìm mã đã tồn tại trong DB (song song, theo batch)
-            var existedInDb = new ConcurrentBag<string>();
-            int batchSize = 1000;
-            int maxDegreeOfParallelism = 10;
-            var semaphore = new SemaphoreSlim(maxDegreeOfParallelism);
-            var tasks = new List<Task>();
-
-            for (int i = 0; i < fileCodes.Count; i += batchSize)
-            {
-                var batch = fileCodes.Skip(i).Take(batchSize).Distinct().ToList();
-
-                await semaphore.WaitAsync();
-                tasks.Add(Task.Run(async () =>
+            // Gọi hàm đọc Excel + kiểm tra DB
+            var readResult = await HelperFile.ReadExcel_V2<EmployeeExcelDto>(
+                stream,
+                async (batch) =>
                 {
-                    try
-                    {
-                        var existed = await UnitOfWork.EmployeeRepository.GetExistingEmployeeCodes(batch);
-                        foreach (var code in existed)
-                            existedInDb.Add(code);
-                    }
-                    finally
-                    {
-                        semaphore.Release();
-                    }
-                }));
-            }
+                    var codes = batch
+                        .Select(x => x.EmployeeCode?.Trim())
+                        .Where(x => !string.IsNullOrEmpty(x))
+                        .Distinct()
+                        .ToList();
 
-            await Task.WhenAll(tasks);
+                    var existed = await UnitOfWork.EmployeeRepository
+                                        .GetExistingEmployeeCodes(codes);
+                    return existed.ToHashSet();
+                },
+                x => x.EmployeeCode, 
+                batchSize: 500
+            );
 
-            var duplicateInFile = fileCodes
-                                .GroupBy(x => x)
-                                .Where(g => g.Count() > 1)
-                                .Select(g => g.Key)
-                                .ToHashSet();
+            sw.Stop();
+            Console.WriteLine($"⏱️ Phân loại dữ liệu tồn tại & cần import: {sw.ElapsedMilliseconds} ms");
 
-            var existedSet = new HashSet<string>(existedInDb);
-            existedSet.UnionWith(duplicateInFile);
-
-
-            var dataExists = employeeExcelDtos
-                            .Where(x => existedSet.Contains(x.EmployeeCode))
-                            .ToList();
-
-            var dataImport = employeeExcelDtos
-                            .Where(x => !existedSet.Contains(x.EmployeeCode))
-                            .ToList();
-
+            sw.Restart();
             var redisKey = $"import-employee-{Guid.NewGuid()}";
-            _cacheService.SetData(redisKey, dataImport, DateTimeOffset.UtcNow.AddMinutes(10));
+            _cacheService.SetData(redisKey,JsonConvert.SerializeObject(readResult.DataImport), DateTimeOffset.UtcNow.AddMinutes(10));
+            sw.Stop();
+            Console.WriteLine($"⏱️ Ghi dữ liệu vào Redis: {sw.ElapsedMilliseconds} ms");
+
+            swTotal.Stop();
+            Console.WriteLine($"🚀 Tổng thời gian xử lý: {swTotal.ElapsedMilliseconds} ms");
 
             return new DataImportResponse()
             {
                 KeyRedis = redisKey,
-                DataImport = dataImport,
-                DataExists = dataExists,
+                DataImport = readResult.DataImport,
+                DataExists = readResult.DataExists,
                 FileUrl = "redis_url_file"
             };
         }
