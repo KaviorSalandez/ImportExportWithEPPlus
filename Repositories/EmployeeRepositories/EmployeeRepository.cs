@@ -83,6 +83,10 @@ namespace DemoImportExport.Repositories.EmployeeRepositories
                             .ToListAsync();
         }
 
-
+        public async Task<Employee> CheckEmployeeCCCD(string cccd)
+        {
+            var entity = await _context.Employees.FirstOrDefaultAsync(e => e.IDNo == cccd);
+            return entity;
+        }
     }
 }

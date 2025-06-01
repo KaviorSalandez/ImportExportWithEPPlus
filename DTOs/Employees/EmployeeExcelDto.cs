@@ -27,19 +27,15 @@ namespace DemoImportExport.DTOs.Employees
         public DateTime? DOB { get; set; }
 
         // Tên chức vụ 
-        [Display(Name = "Mã Vị trí")]
-        public string PositionId { get; set; }
+        [Display(Name = "Tên vị trí")]
+        public string PositionName { get; set; }
 
         // Tên phòng ban 
-        [Display(Name = "Mã Đơn Vị")]
-        public string DepartmentId { get; set; }
+        [Display(Name = "Tên phòng ban")]
+        public string DepartmentName { get; set; }
 
         // Số tài khoản ngân hàng
-        [Display(Name = "Số Tài Khoản")]
-        public string? BankAccount { get; set; }
-
-        // Tên ngân hàng
-        [Display(Name = "Tên Ngân Hàng")]
-        public string? BankName { get; set; }
+        [Display(Name = "Số CCCD")]
+        public string? IDNo { get; set; }
     }
 }

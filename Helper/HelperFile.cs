@@ -27,10 +27,13 @@ namespace DemoImportExport.Helper
         public static byte[] GenerateExcelFile<TDto>(IEnumerable<TDto> data, bool showStatus, string sheetTitle, Dictionary<string, IEnumerable<string>> validationData = null)
         {
             var tDtoHeaders = GetHeadersFromDto<TDto>();
-            string[] columnHeaders = tDtoHeaders.Prepend("STT").ToArray(); // add stt to first column
+            string[] columnHeaders = tDtoHeaders.ToArray(); // add stt to first column
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+
+            // Khởi tạo một file Excel mới trong bộ nhớ.
             using (var package = new ExcelPackage())
             {
+                // Tạo một worksheet mới với tên sheetTitle.
                 var ws = package.Workbook.Worksheets.Add(sheetTitle);
 
                 ws.Cells["A1:" + GetColumnLetter(columnHeaders.Length) + "2"].Merge = true;
@@ -82,6 +85,17 @@ namespace DemoImportExport.Helper
                 })
                 .ToArray();
         }
+
+        /// <summary>
+        /// Tạo hàng tiêu đề cho Excel,Tự động tính và đặt độ rộng cho từng cột,Thêm cột "Tình trạng" nếu được yêu cầu (showStatus),
+        /// Định dạng font, viền, tự động xuống dòng trong Excel.
+        /// </summary>
+        /// <typeparam name="TDto"></typeparam>
+        /// <param name="columnHeaders"></param>
+        /// <param name="worksheet"></param>
+        /// <param name="dataStartRow"></param>
+        /// <param name="endRow"></param>
+        /// <param name="showStatus"></param>
         private static void CreateColumnHeader<TDto>(string[] columnHeaders, ExcelWorksheet worksheet, int dataStartRow, int endRow, bool showStatus)
         {
             var columnWidths = columnHeaders.Select(header =>
@@ -121,6 +135,11 @@ namespace DemoImportExport.Helper
                 }
             }
         }
+        /// <summary>
+        /// Hàm này chuyển đổi số cột sang chữ cái tương ứng (1 -> A, 2 -> B, ..., 27 -> AA, ...)
+        /// </summary>
+        /// <param name="columnNumber"></param>
+        /// <returns></returns>
         private static string GetColumnLetter(int columnNumber)
         {
             var dividend = columnNumber;
@@ -135,6 +154,7 @@ namespace DemoImportExport.Helper
 
             return columnName;
         }
+
         /// <summary>
         /// Hàm này tạo các select trên cột được chỉ định và chỉ cho nhập trong khoảng đó
         /// </summary>
@@ -191,18 +211,20 @@ namespace DemoImportExport.Helper
             PropertyInfo[] propInfo = typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public);
 
             // Thêm cột số thứ tự
-            dt.Columns.Add("STT", typeof(int));
+            // dt.Columns.Add("STT", typeof(int));
+            // ví dụ với class Student
+            // propInfo sẽ chứa "Name", "Birthday", "Score"
             foreach (PropertyInfo prop in propInfo)
             {
                 dt.Columns.Add(prop.Name);
             }
 
-            int ordinalNumber = 1;
+            //int ordinalNumber = 1;
             int rowIndex = 4; // dòng bắt đầu ghi dữ liệu
             foreach (T item in items)
             {
                 // STT
-                ws.Cells[rowIndex, 1].Value = ordinalNumber;
+                //ws.Cells[rowIndex, 1].Value = ordinalNumber;
 
                 for (int i = 0; i < propInfo.Length; i++)
                 {
@@ -219,25 +241,25 @@ namespace DemoImportExport.Helper
                             if (underlyingType == typeof(DateTime))
                             {
                                 DateTime dateTimeValue = (DateTime)propValue;
-                                ws.Cells[rowIndex, i + 2].Value = dateTimeValue.ToString("dd/MM/yyyy");
+                                ws.Cells[rowIndex, i + 1].Value = dateTimeValue.ToString("dd/MM/yyyy");
                             }
                             else
                             {
-                                ws.Cells[rowIndex, i + 2].Value = propValue.ToString();
+                                ws.Cells[rowIndex, i + 1].Value = propValue.ToString();
                             }
                         }
                         else
                         {
-                            ws.Cells[rowIndex, i + 2].Value = propValue.ToString();
+                            ws.Cells[rowIndex, i + 1].Value = propValue.ToString();
                         }
                     }
                     else
                     {
-                        ws.Cells[rowIndex, i + 2].Value = ""; // giá trị mặc định nếu null
+                        ws.Cells[rowIndex, i + 1].Value = ""; // giá trị mặc định nếu null
                     }
                 }
 
-                ordinalNumber++;
+                //ordinalNumber++;
                 rowIndex++;
             }
 
@@ -255,12 +277,22 @@ namespace DemoImportExport.Helper
         }
         #endregion
         #region read file 
+        /// <summary>
+        /// Giúp người dùng chỉ được upload đúng mẫu Excel hệ thống đã thiết kế.
+        /// Tránh lỗi khi map dữ liệu sau này
+        /// Trường hợp sẽ báo lỗi:Tên tiêu đề không khớp (ví dụ "Mã nhân viên" thay vì "Mã NV"),Thừa hoặc thiếu cột,Sai thứ tự.
+        /// </summary>
+        /// <typeparam name="TDto"></typeparam>
+        /// <param name="worksheet"></param>
+        /// <param name="headerRow"></param>
+        /// <exception cref="Exception"></exception>
         private static void ValidateExcelHeaders<TDto>(ExcelWorksheet worksheet, int headerRow = 3)
         {
             var expectedHeaders = typeof(TDto).GetProperties()
                 .Select(prop => prop.GetCustomAttribute<DisplayAttribute>()?.Name ?? prop.Name)
                 .ToArray();
 
+            // đọc các tiêu đề thật sự từ file excel
             var actualHeaders = new List<string>();
             int col = 1;
 
@@ -276,8 +308,9 @@ namespace DemoImportExport.Helper
             if (actualHeaders.Count == 0)
                 throw new Exception("Không tìm thấy cột tiêu đề trong file.");
 
-            var actualWithoutFirst = actualHeaders.Skip(1).ToArray();
+            var actualWithoutFirst = actualHeaders.ToArray();
 
+            //Nếu số lượng khác nhau hoặc tên khác nhau, thì ném lỗi "File không đúng định dạng mẫu".
             if (actualWithoutFirst.Length != expectedHeaders.Length ||
                 !expectedHeaders.SequenceEqual(actualWithoutFirst))
             {
@@ -290,16 +323,18 @@ namespace DemoImportExport.Helper
             var result = new List<TDto>();
             using (var package = new ExcelPackage(excelStream))
             {
+                // lấy worksheet đầu tiên
                 var worksheet = package.Workbook.Worksheets.FirstOrDefault();
                 if (worksheet == null)
                     throw new Exception("Không tìm thấy sheet trong file Excel.");
 
+                // xác thực tiêu đề
                 ValidateExcelHeaders<TDto>(worksheet);
 
                 int headerRow = 3;
                 int totalColumns = worksheet.Dimension.End.Column;
                 int totalRows = worksheet.Dimension.End.Row;
-                // Lấy tên cột
+                //  Lấy danh sách tiêu đề cột
                 var headers = new List<string>();
                 for (int col = 1; col <= totalColumns; col++)
                 {
@@ -307,8 +342,15 @@ namespace DemoImportExport.Helper
                     if (string.IsNullOrWhiteSpace(header)) break;
                     headers.Add(header);
                 }
+
+                // Tạo map tên cột -> PropertyInfo
+                // Khi đọc Excel, bạn sẽ so sánh tên cột trong file Excel với tên các thuộc tính trong DTO.
+                // Nhưng file Excel có thể dùng tên hiển thị(Display) thay vì tên thuộc tính thực.
+                // Câu lệnh này giúp ánh xạ được cả hai trường hợp.
+
                 var properties = typeof(TDto).GetProperties(BindingFlags.Public | BindingFlags.Instance)
                     .ToDictionary(p => p.GetCustomAttribute<DisplayAttribute>()?.Name.ToLower() ?? p.Name.ToLower(), p => p);
+
                 // Tạo danh sách các task để xử lý song song theo từng dòng
                 var tasks = new List<Task<List<TDto>>>();
 
@@ -584,5 +626,8 @@ namespace DemoImportExport.Helper
             return dto;
         }
         #endregion
+        
+
+
     }
 }

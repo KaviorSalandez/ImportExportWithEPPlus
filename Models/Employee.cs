@@ -8,21 +8,26 @@ namespace DemoImportExport.Models
         [Key]
         public int EmployeeId { get; set; }
 
-        public string EmployeeName { get; set; }
+        public string? EmployeeName { get; set; }
 
         [Required]
         public int DepartmentId { get; set; }
 
         [ForeignKey("DepartmentId")]
-        public Department Department { get; set; }
+        public Department? Department { get; set; }
+
+        [NotMapped]
+        public string? DepartmentName { get; set; }
 
         [Required]
         public int PositionId { get; set; }
 
         [ForeignKey("PositionId")]
-        public Position Position { get; set; }
+        public Position? Position { get; set; }
+        [NotMapped]
+        public string? PositionName { get; set; }
 
-        public string EmployeeCode { get; set; }
+        public string? EmployeeCode { get; set; }
         public DateTime? DOB { get; set; }
         public DemoImportExport.Enums.CDKEnum.Gender? Gender { get; set; }
         public string? IDNo { get; set; }

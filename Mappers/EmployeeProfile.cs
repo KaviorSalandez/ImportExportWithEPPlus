@@ -15,6 +15,8 @@ namespace DemoImportExport.Mappers
             CreateMap<EmployeeExcelDto, EmployeeDto>().ReverseMap();
             CreateMap<EmployeeExcelDto, Employee>().ReverseMap();
             CreateMap<Employee, EmployeeImportDto>().ReverseMap();
+
+            CreateMap<EmployeeImportDto, EmployeeExcelDto>().ReverseMap();
         }
     }
     

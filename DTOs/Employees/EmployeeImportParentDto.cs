@@ -14,7 +14,9 @@ namespace DemoImportExport.DTOs.Employees
 
         public int CountFail { get; set; }
 
-        public string IdImport { get; set; }
+        public string KeyRedisImportSuccess { get; set; }
+
+        public string KeyRedisImportFail { get; set; }  // Fail khi CountFail > 0
 
         public List<EmployeeImportDto> EmployeeImportDtos { get; set; }
 

@@ -118,7 +118,7 @@ namespace DemoImportExport.Controllers
             }
             try
             {
-               var listEmployee = await _employeeService.HandleDataImport(file);
+               var listEmployee = await _employeeService.ImportExcel(file);
 
                 return Ok(new ApiResponse<object>
                 {
@@ -138,21 +138,41 @@ namespace DemoImportExport.Controllers
             }
         }
 
-        //[HttpGet("ExportExcelFail/{id}")]
-        //public async Task<IActionResult> ExportExcelFail(string id)
-        //{
-        //    byte[] excelData = await _quizQuestionService.ExportExcel(1, id);
-        //    string fileName = $"Quiz-Fail-{DateTime.Now.ToString("dd-MM-yy HH:mm:ss")}.xlsx";
-        //    return File(excelData, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
-        //}
 
-        //[HttpGet("ExportExcelResult/{id}")]
-        //public async Task<IActionResult> ExportExcelResult(string id)
-        //{
-        //    byte[] excelData = await _quizQuestionService.ExportExcel(1, id);
-        //    string fileName = $"Quiz-Result-{DateTime.Now.ToString("dd-MM-yy HH:mm:ss")}.xlsx";
-        //    return File(excelData, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
-        //}
+        [HttpGet("Download-error-file")]
+        public IActionResult DownloadErrorFile([FromQuery] string cacheKey)
+        {
+            var fileBytes = _cacheService.GetData<byte[]>(cacheKey);
+            if (fileBytes == null)
+                return NotFound("File not found or expired.");
+
+            return File(
+                fileBytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "ImportErrors.xlsx"
+            );
+        }
+
+
+        [HttpPost("ImportDataBase")]
+        public IActionResult ImportData(string redisKey)
+        {
+            if (string.IsNullOrEmpty(redisKey))
+            {
+                return BadRequest("Redis key is required.");
+            }
+
+            try
+            {
+                var result = _employeeService.ImportDatabase(redisKey);
+                return Ok(new { message = "Import successful", count = result });
+            }
+            catch (Exception ex)
+            {
+                // Ghi log nếu cần: _logger.LogError(ex, "Import failed");
+                return StatusCode(500, new { message = "Import failed", error = ex.Message });
+            }
+        }
 
     }
 }

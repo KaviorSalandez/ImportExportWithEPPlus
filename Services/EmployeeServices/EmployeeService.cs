@@ -91,11 +91,11 @@ namespace DemoImportExport.Services.EmployeeServices
         }
 
 
-        public async Task<byte[]> ExportExcel(bool isFileMau, List<int>? Ids = null)
+        public async Task<byte[]> ExportExcel(bool isTemplateFile, List<int>? Ids = null)
         {
             IEnumerable<EmployeeExcelDto> data = new List<EmployeeExcelDto>();
             // check Data  = 1 -> kết xuất file rỗng để import
-            if (isFileMau)
+            if (isTemplateFile)
             {
                 return GenerateExcelFile(data, null);
             }
@@ -118,6 +118,7 @@ namespace DemoImportExport.Services.EmployeeServices
                 return GenerateExcelFile(data, null);
             }
         }
+
         private byte[] GenerateExcelFile(IEnumerable<EmployeeExcelDto> data, string keyRedis)
         {
             try
@@ -171,27 +172,40 @@ namespace DemoImportExport.Services.EmployeeServices
             throw new NotImplementedException();
         }
 
+        public bool IsValidCCCD(string cccd)
+        {
+            // Kiểm tra null hoặc rỗng
+            if (string.IsNullOrWhiteSpace(cccd)) return false;
+
+            // Dùng regex để kiểm tra đúng 12 chữ số
+            return Regex.IsMatch(cccd.Trim(), @"^\d{12}$");
+        }
+
         public async Task<EmployeeImportParentDto> ImportExcel(IFormFile fileImport)
         {
-            await CheckFileImport(fileImport);
 
             int countSuccess = 0, countFail = 0;
             // Kết quả tổng hợp toàn bộ file
             var employeeImportParentDtos = new EmployeeImportParentDto();
 
-            // list các bản ghi đã import (mỗi bản ghi có kiểm tra hợp lệ và ds lỗi)
+            // tổng hợp danh sách các bản ghi cả lỗi và không lỗi để hiển thị ra phía FE
             var employeeImportDtos = new List<EmployeeImportDto>();
-            // Danh sách nhân viên hợp lệ (đã mapping)
 
+            // Danh sách nhân viên hợp lệ (đã mapping)
             var employeeImportSuccess = new List<Employee>();
 
             var positions = await UnitOfWork.PositionRepository.GetAllAsync();
+
             var departments = await UnitOfWork.DepartmentRepository.GetAllAsync();
 
             using (var stream = new MemoryStream())
             {
                 // copy vào tệp stream 
                 fileImport.CopyTo(stream);
+
+                // ✅ Cấu hình LicenseContext trước khi sử dụng ExcelPackage
+                ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+
                 // thực hiện đọc dữ liệu trong file
                 using (var package = new ExcelPackage(stream))
                 {
@@ -201,88 +215,189 @@ namespace DemoImportExport.Services.EmployeeServices
                     {
                         var rowCount = workSheet.Dimension.Rows;
 
+                        var employeeCodesInExcel = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                        var idNosInExcel = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
                         for (int row = 4; row <= rowCount; row++)
                         {
+                            // 🔽 Thêm đoạn này vào ngay sau
+                            bool isEmptyRow = true;
+                            for (int col = 1; col <= 7; col++)
+                            {
+                                var cellValue = workSheet?.Cells[row, col]?.Value?.ToString()?.Trim();
+                                if (!string.IsNullOrWhiteSpace(cellValue))
+                                {
+                                    isEmptyRow = false;
+                                    break;
+                                }
+                            }
+                            if (isEmptyRow)
+                            {
+                                continue; // Skip empty row
+                            }
+
                             var employeeImportDto = new EmployeeImportDto();
-                            var gender = workSheet?.Cells[row, 4]?.Value?.ToString()?.Trim();
-                            var dob = workSheet.Cells[row, 5]?.Value?.ToString()?.Trim();
-                            var positionName = workSheet?.Cells[row, 6]?.Value?.ToString()?.Trim();
-                            var departmentName = workSheet?.Cells[row, 7]?.Value?.ToString()?.Trim();
+                            var employeeCode = workSheet?.Cells[row, 1]?.Value?.ToString()?.Trim();
+                            var employeeName = workSheet?.Cells[row, 2]?.Value?.ToString()?.Trim();
+                            var gender = workSheet?.Cells[row, 3]?.Value?.ToString()?.Trim();
+                            var dob = workSheet?.Cells[row, 4]?.Value?.ToString()?.Trim();
+                            var positionName = workSheet?.Cells[row, 5]?.Value?.ToString()?.Trim();
+                            var departmentName = workSheet?.Cells[row, 6]?.Value?.ToString()?.Trim();
+                            var cccd = workSheet?.Cells[row, 7]?.Value?.ToString()?.Trim();
 
                             var checkPositionName = CheckCoincidence(positions, positionName, "PositionName");
                             var checkDepartmentName = CheckCoincidence(departments, departmentName, "DepartmentName");
 
                             employeeImportDto = new EmployeeImportDto
                             {
-                                EmployeeCode = workSheet?.Cells[row, 2]?.Value?.ToString()?.Trim(),
-                                EmployeeName = workSheet?.Cells[row, 3]?.Value?.ToString()?.Trim(),
+                                EmployeeCode = workSheet?.Cells[row, 1]?.Value?.ToString()?.Trim(),
+
+                                EmployeeName = workSheet?.Cells[row, 2]?.Value?.ToString()?.Trim(),
 
                                 Gender = ConvertGender(gender),
 
                                 DOB = dob != "" && dob != null ? ProcessDate(dob) : null,
 
-                                PositionId = checkPositionName != null ? (int)checkPositionName.GetType().GetProperty("PositionId")?.GetValue(checkPositionName, null) : 0,
-                                DepartmentId = checkDepartmentName != null ? (int)checkDepartmentName.GetType().GetProperty("DepartmentId")?.GetValue(checkDepartmentName, null) : 0,
+                                // Get PositionId và DepartmentId từ các đối tượng checkPositionName và checkDepartmentName
 
-                                BankAccount = workSheet?.Cells[row, 8]?.Value?.ToString()?.Trim(),
-                                BankName = workSheet?.Cells[row, 9]?.Value?.ToString()?.Trim(),
+                                PositionId = checkPositionName != null ? (int)checkPositionName.GetType().GetProperty("PositionId")?.GetValue(checkPositionName, null) : 0,
+                                PositionName = positionName,
+                                DepartmentId = checkDepartmentName != null ? (int)checkDepartmentName.GetType().GetProperty("DepartmentId")?.GetValue(checkDepartmentName, null) : 0,
+                                DepartmentName = departmentName,
+
+                                IDNo = workSheet?.Cells[row, 7]?.Value?.ToString()?.Trim(),
                             };
+
                             bool check = true;
+
+                            // Kiểm tra mã nhân viên rỗng
+                            if (string.IsNullOrWhiteSpace(employeeCode))
+                            {
+                                AddImportError(employeeImportDto, "Mã nhân viên không được để trống");
+                                check = false;
+                            }
+                            else
+                            {
+                                // Kiểm tra trùng mã trong danh sách đang import
+                                if (employeeCodesInExcel.Contains(employeeCode))
+                                {
+                                    AddImportError(employeeImportDto, $"Mã nhân viên '{employeeCode}' bị trùng với nhân viên khác trong file Excel");
+                                    check = false;
+                                }
+                                else
+                                {
+                                    employeeCodesInExcel.Add(employeeCode); // Chỉ add khi hợp lệ
+                                }
+
+                                // Kiểm tra trùng mã trong database
+                                var checkEmployeeCode = await UnitOfWork.EmployeeRepository.CheckEmployeeCode(employeeCode);
+                                if (checkEmployeeCode != null)
+                                {
+                                    AddImportError(employeeImportDto, "Mã nhân viên đã tồn tại trong hệ thống");
+                                    check = false;
+                                }
+                            }
+
+                            // --- Kiểm tra tên nhân viên ---
+                            if (string.IsNullOrWhiteSpace(employeeName))
+                            {
+                                AddImportError(employeeImportDto, "Tên nhân viên không được để trống");
+                                check = false;
+                            }
+
+                            // Kiểm tra phòng ban và vị trí
                             if (checkDepartmentName == null)
                             {
-                                AddImportError(employeeImportDto, $"{"Không tìm thấy đơn vị"}: {departmentName}");
+                                AddImportError(employeeImportDto, $"Không tìm thấy phòng ban: {departmentName}");
                                 check = false;
                             }
                             if (checkPositionName == null)
                             {
-                                AddImportError(employeeImportDto, $"{"Không tìm thấy vị trí"}: {positionName}");
+                                AddImportError(employeeImportDto, $"Không tìm thấy vị trí: {positionName}");
                                 check = false;
                             }
 
-                            var employee = _mapper.Map<Employee>(employeeImportDto);
-
-                            var checkEmployeeCode = await UnitOfWork.EmployeeRepository.CheckEmployeeCode(employeeImportDto.EmployeeCode);
-                            if (checkEmployeeCode != null)
+                            // Kiểm tra căn cước công dân
+                            if (string.IsNullOrWhiteSpace(cccd))
                             {
-                                AddImportError(employeeImportDto, "Mã Nhân Viên đã được tạo");
+                                AddImportError(employeeImportDto, "Căn cước công dân không được để trống");
                                 check = false;
                             }
+                            else
+                            {
+                                // Kiểm tra trùng cccd trong danh sách đang import
+                                if (idNosInExcel.Contains(cccd))
+                                {
+                                    AddImportError(employeeImportDto, $"Số căn cước công dân '{cccd}' bị trùng với nhân viên khác trong file Excel");
+                                    check = false;
+                                }
+                                else
+                                {
+                                    idNosInExcel.Add(cccd); // Chỉ add khi hợp lệ
+                                }
+
+                                // Kiểm tra trùng cccd trong database
+                                var checkEmployeeCCCD = await UnitOfWork.EmployeeRepository.CheckEmployeeCCCD(cccd);
+                                if (checkEmployeeCCCD != null)
+                                {
+                                    AddImportError(employeeImportDto, "Số CCCD đã tồn tại trong hệ thống");
+                                    check = false;
+                                }
+                            }
+                           
                             if (check == true)
                             {
                                 countSuccess++;
                                 employeeImportDto.IsImported = true;
+                                // thêm những ban ghi hợp lệ vào danh sách
+                                var employee = _mapper.Map<Employee>(employeeImportDto);
                                 employeeImportSuccess.Add(employee);
                             }
-                            if (checkEmployeeCode != null || checkDepartmentName == null || checkPositionName == null)
+                            else
                             {
                                 countFail++;
                             }
-
                             employeeImportDtos.Add(employeeImportDto);
-
                         }
                     }
                     employeeImportParentDtos.CountSuccess = countSuccess;
                     employeeImportParentDtos.CountFail = countFail;
                     employeeImportParentDtos.EmployeeImportDtos = employeeImportDtos;
 
-                    var cacheKey = $"excel-import-data-{Guid.NewGuid()}"; // Use a unique key
-                    employeeImportParentDtos.IdImport = cacheKey;
-                    DateTimeOffset expiryTime = DateTimeOffset.Now.AddDays(1);
-                    _cacheService.SetData<string>(cacheKey, JsonConvert.SerializeObject(employeeImportSuccess), expiryTime);
+                    var cacheKey = $"data-import-success-{Guid.NewGuid()}"; // Use a unique key
+                    employeeImportParentDtos.KeyRedisImportSuccess = cacheKey;
+                    _cacheService.SetData<string>(cacheKey, JsonConvert.SerializeObject(employeeImportSuccess), DateTimeOffset.Now.AddDays(1));
+
+                    // lưu file lỗi nếu có (vào trong redis)
+                    if (countFail > 0)
+                    {
+                        var listImportError = employeeImportParentDtos.EmployeeImportDtos.Where(x => x.IsImported == false).ToList();
+                        List<EmployeeExcelDto> employeeExcelDtos = new List<EmployeeExcelDto>();
+                        employeeExcelDtos = _mapper.Map<List<EmployeeExcelDto>>(listImportError);
+                        var fileErrors = GenerateExcelFile(employeeExcelDtos,null);
+
+                        var cacheKeyError = $"error-file-{Guid.NewGuid()}";
+                        _cacheService.SetData<byte[]>(cacheKeyError, fileErrors, DateTimeOffset.Now.AddDays(1));
+                        employeeImportParentDtos.KeyRedisImportFail = cacheKeyError;
+                    }
+
+
+
                 }
             }
 
             return employeeImportParentDtos;
         }
 
-        public int ImportDatabase(string idImport)
+        public int ImportDatabase(string idImport_keyRedis)
         {
-            if (idImport == null)
+            if (idImport_keyRedis == null)
             {
                 throw new Exception();
             }
-            var dataImport = _cacheService.GetData<string>(idImport);
+
+            var dataImport = _cacheService.GetData<string>(idImport_keyRedis);
             var jArray = JsonConvert.DeserializeObject<JArray>(dataImport);
             var employees = jArray?.ToObject<List<Employee>>();
 
@@ -507,7 +622,7 @@ namespace DemoImportExport.Services.EmployeeServices
         }
 
 
-        #region
+        #region Mapper
         public Employee MapCreateDtoToEntity(EmployeeCreateDto entity)
         {
             var entityDto = _mapper.Map<Employee>(entity);
@@ -527,7 +642,6 @@ namespace DemoImportExport.Services.EmployeeServices
             return entityDto;
         }
         #endregion
-
 
         public async Task CheckBeforeInsert(EmployeeCreateDto entity)
         {
@@ -549,20 +663,6 @@ namespace DemoImportExport.Services.EmployeeServices
         }
 
 
-        public async Task CheckBeforeUpdate(EmployeeUpdateDto entity)
-        {
-            var department = await UnitOfWork.DepartmentRepository.GetByIdAsync(entity.DepartmentId);
-            if (department == null)
-            {
-                throw new Exception("Không tìm thấy đơn vị");
-            }
-            var position = await UnitOfWork.PositionRepository.GetByIdAsync(entity.PositionId);
-            if (position == null)
-            {
-                throw new Exception("Không tìm thấy vị trí");
-            }
-        }
-
         public Task<byte[]> ExportExcel2(bool isFileMau, string? keyRedis)
         {
             //IEnumerable<EmployeeExcelDto> data = new List<EmployeeExcelDto>();
@@ -580,101 +680,6 @@ namespace DemoImportExport.Services.EmployeeServices
 
         public async Task<DataImportResponse> HandleDataImport(IFormFile file)
         {
-            var swTotal = Stopwatch.StartNew();
-            var sw = Stopwatch.StartNew();
-            //using var stream = new MemoryStream();
-            //await file.CopyToAsync(stream).ConfigureAwait(false);
-            //stream.Position = 0; // Reset the stream position to the beginning
-            //                     // Read the Excel file and map it to EmployeeExcelDto
-            //var employeeExcelDtos = await HelperFile.ReadExcel<EmployeeExcelDto>(stream).ConfigureAwait(false);
-            //stream.Close();
-            //sw.Stop();
-            //Console.WriteLine($"⏱️ Đọc & ánh xạ Excel: {sw.ElapsedMilliseconds} ms");
-
-
-            //// 1. Kiểm tra dữ liệu trong file
-            //var fileCodes = employeeExcelDtos
-            //                .Where(x => !string.IsNullOrWhiteSpace(x.EmployeeCode))
-            //                .Select(x => x.EmployeeCode.Trim())
-            //                .Distinct()
-            //                .ToList();
-            //// 3. Tìm mã đã tồn tại trong DB (song song, theo batch)
-            //sw.Restart();
-            //var existedInDb = new ConcurrentBag<string>();
-            //int batchSize = 500;
-            //int maxDegreeOfParallelism = 10;
-            //var semaphore = new SemaphoreSlim(maxDegreeOfParallelism);
-            //var tasks = new List<Task>();
-
-            //for (int i = 0; i < fileCodes.Count; i += batchSize)
-            //{
-            //    var batch = fileCodes.Skip(i).Take(batchSize).Distinct().ToList();
-
-            //    await semaphore.WaitAsync();
-            //    tasks.Add(Task.Run(async () =>
-            //    {
-            //        try
-            //        {
-            //            // when use task run, we need to create a new scope, because the task run will not use the scope of the current thread, EF core do not support query in multiple threads of the same context instance
-            //            using var scope = _serviceProvider.CreateScope(); // inject IServiceProvider từ bên ngoài
-            //            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-
-            //            var existed = await unitOfWork.EmployeeRepository.GetExistingEmployeeCodes(batch).ConfigureAwait(false);
-            //            foreach (var code in existed)
-            //                existedInDb.Add(code);
-            //        }
-            //        finally
-            //        {
-            //            semaphore.Release();
-            //        }
-            //    }));
-            //}
-
-            //await Task.WhenAll(tasks);
-            //sw.Stop();
-            //Console.WriteLine($"⏱️ Truy vấn DB kiểm tra mã tồn tại: {sw.ElapsedMilliseconds} ms");
-
-            //sw.Restart();
-
-            //var duplicateInFile = fileCodes
-            //                    .GroupBy(x => x)
-            //                    .Where(g => g.Count() > 1)
-            //                    .Select(g => g.Key)
-            //                    .ToHashSet();
-
-            //var existedSet = new HashSet<string>(existedInDb);
-            //existedSet.UnionWith(duplicateInFile);
-
-            //sw.Stop();
-            //Console.WriteLine($"⏱️ Xử lý trùng trong file & union kết quả: {sw.ElapsedMilliseconds} ms");
-
-            //sw.Restart();
-            ////var dataExists = employeeExcelDtos
-            ////                .Where(x => existedSet.Contains(x.EmployeeCode))
-            ////                .ToList();
-
-            ////var dataImport = employeeExcelDtos
-            ////                .Where(x => !existedSet.Contains(x.EmployeeCode))
-            ////                .ToList();
-
-            //var taskExists = Task.Run(() =>
-            //{
-            //    return employeeExcelDtos
-            //        .Where(x => existedSet.Contains(x.EmployeeCode))
-            //        .ToList();
-            //});
-
-            //var taskImport = Task.Run(() =>
-            //{
-            //    return employeeExcelDtos
-            //        .Where(x => !existedSet.Contains(x.EmployeeCode))
-            //        .ToList();
-            //});
-
-            //await Task.WhenAll(taskExists, taskImport);
-
-            //var dataExists = taskExists.Result;
-            //var dataImport = taskImport.Result;
 
             using var stream = new MemoryStream();
             await file.CopyToAsync(stream).ConfigureAwait(false);
@@ -699,17 +704,8 @@ namespace DemoImportExport.Services.EmployeeServices
                 batchSize: 500
             );
 
-            sw.Stop();
-            Console.WriteLine($"⏱️ Phân loại dữ liệu tồn tại & cần import: {sw.ElapsedMilliseconds} ms");
-
-            sw.Restart();
             var redisKey = $"import-employee-{Guid.NewGuid()}";
             _cacheService.SetData(redisKey,JsonConvert.SerializeObject(readResult.DataImport), DateTimeOffset.UtcNow.AddMinutes(10));
-            sw.Stop();
-            Console.WriteLine($"⏱️ Ghi dữ liệu vào Redis: {sw.ElapsedMilliseconds} ms");
-
-            swTotal.Stop();
-            Console.WriteLine($"🚀 Tổng thời gian xử lý: {swTotal.ElapsedMilliseconds} ms");
 
             return new DataImportResponse()
             {

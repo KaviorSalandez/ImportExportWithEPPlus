@@ -9,12 +9,12 @@ namespace MISA.AMISDemo.Core.DTOs.Employees
 {
     public class EmployeeImportDto : Employee
     {
-        public List<String> Errors { get; set; }  // Ghi nhận các lỗi khi import    
+        public List<string> Errors { get; set; }  // Ghi nhận các lỗi khi import    
         public bool IsImported { get; set; }    // Đánh dấu xem bản ghi đã hợp lệ hay chưa
 
         public EmployeeImportDto()
         {
-            Errors = new List<String>();
+            Errors = new List<string>();
         }
     }
 }
